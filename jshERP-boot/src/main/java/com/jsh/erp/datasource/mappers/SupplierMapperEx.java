@@ -2,6 +2,7 @@ package com.jsh.erp.datasource.mappers;
 
 import com.jsh.erp.datasource.entities.Supplier;
 import com.jsh.erp.datasource.entities.SupplierExample;
+import com.jsh.erp.datasource.vo.SupplierSimple;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.Date;
@@ -12,15 +13,7 @@ public interface SupplierMapperEx {
     List<Supplier> selectByConditionSupplier(
             @Param("supplier") String supplier,
             @Param("type") String type,
-            @Param("phonenum") String phonenum,
-            @Param("telephone") String telephone,
-            @Param("creatorArray") String[] creatorArray,
-            @Param("offset") Integer offset,
-            @Param("rows") Integer rows);
-
-    Long countsBySupplier(
-            @Param("supplier") String supplier,
-            @Param("type") String type,
+            @Param("contacts") String contacts,
             @Param("phonenum") String phonenum,
             @Param("telephone") String telephone,
             @Param("creatorArray") String[] creatorArray);
@@ -35,5 +28,19 @@ public interface SupplierMapperEx {
 
     Supplier getSupplierByNameAndType(
             @Param("supplier") String supplier,
+            @Param("type") String type);
+
+    List<SupplierSimple> getAllCustomer();
+
+    List<Supplier> findByTypeAndKey(
+            @Param("type") String type,
+            @Param("key") String key,
+            @Param("limit") Integer limit);
+
+    Supplier getInfoById(
+            @Param("id") Long id);
+
+    Supplier getInfoByName(
+            @Param("name") String name,
             @Param("type") String type);
 }

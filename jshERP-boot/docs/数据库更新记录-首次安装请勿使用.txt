@@ -1611,3 +1611,137 @@ alter table jsh_system_config add audit_print_flag varchar(1) DEFAULT '0' COMMEN
 -- --------------------------------------------------------
 alter table jsh_material add brand varchar(100) DEFAULT NULL COMMENT '品牌' after standard;
 alter table jsh_material add mnemonic varchar(100) DEFAULT NULL COMMENT '助记码' after brand;
+
+-- --------------------------------------------------------
+-- 时间 2024年12月08日
+-- by jishenghua
+-- 给用户表增加删除字段、修改状态表的备注
+-- 给租户表增加删除字段
+-- --------------------------------------------------------
+alter table jsh_user add delete_flag varchar(1) DEFAULT '0' COMMENT '删除标记，0未删除，1删除' after tenant_id;
+alter table jsh_user change Status status tinyint(4) DEFAULT '0' COMMENT '状态，0正常，2封禁';
+update jsh_user set delete_flag='1' where status=1;
+alter table jsh_tenant add delete_flag varchar(1) DEFAULT '0' COMMENT '删除标记，0未删除，1删除' after remark;
+
+-- --------------------------------------------------------
+-- 时间 2024年12月17日
+-- by jishenghua
+-- 更新菜单：把计量单位更新为多单位
+-- --------------------------------------------------------
+update jsh_function set name='多单位' where number='010103';
+
+-- --------------------------------------------------------
+-- 时间 2025年2月25日
+-- by jishenghua
+-- 给地址字段调整长度
+-- --------------------------------------------------------
+alter table jsh_supplier change address address varchar(100) DEFAULT NULL COMMENT '地址';
+
+-- --------------------------------------------------------
+-- 时间 2025年3月25日
+-- by jishenghua
+-- 给产品扩展字段表增加租户id字段
+-- 另外注意：需要手动把商品属性菜单分配给租户角色
+-- --------------------------------------------------------
+alter table jsh_material_property add tenant_id bigint(20) DEFAULT NULL COMMENT '租户id' after another_name;
+
+-- --------------------------------------------------------
+-- 时间 2025年3月30日
+-- by jishenghua
+-- 给jsh_account_head表的文件字段增加长度
+-- --------------------------------------------------------
+alter table jsh_account_head change file_name file_name varchar(1000) DEFAULT NULL COMMENT '附件名称';
+
+-- --------------------------------------------------------
+-- 时间 2025年4月9日
+-- by jishenghua
+-- 给商品表增加多属性字段，里面存多属性的数组
+-- --------------------------------------------------------
+alter table jsh_material add attribute varchar(1000) DEFAULT NULL COMMENT '多属性信息' after position;
+
+-- --------------------------------------------------------
+-- 时间 2025年4月28日
+-- by jishenghua
+-- 把菜单基本资料改成基础资料
+-- --------------------------------------------------------
+update jsh_function set name='基础资料' where number='0102';
+
+-- --------------------------------------------------------
+-- 时间 2025年5月18日
+-- by jishenghua
+-- 给系统参数表增加零收付款启用标记，启用后，销售出库单据新建时默认本次收款为0，采购入库单据同理
+-- --------------------------------------------------------
+alter table jsh_system_config add zero_change_amount_flag varchar(1) DEFAULT '0' COMMENT '零收付款启用标记，0未启用，1启用' after audit_print_flag;
+
+-- --------------------------------------------------------
+-- 时间 2025年5月20日
+-- by jishenghua
+-- 给系统参数表增加客户静态单价启用标记，启用后，客户的销售出库的单价不会从该客户历史单据的单价获取，而是只从商品信息获取
+-- --------------------------------------------------------
+alter table jsh_system_config add customer_static_price_flag varchar(1) DEFAULT '0' COMMENT '客户静态单价启用标记，0未启用，1启用' after zero_change_amount_flag;
+
+-- --------------------------------------------------------
+-- 时间 2025年7月3日
+-- by jishenghua
+-- 给jsh_material表的扩展字段增加长度
+-- --------------------------------------------------------
+alter table jsh_material change other_field1 other_field1 varchar(500) DEFAULT NULL COMMENT '自定义1';
+alter table jsh_material change other_field2 other_field2 varchar(500) DEFAULT NULL COMMENT '自定义2';
+alter table jsh_material change other_field3 other_field3 varchar(500) DEFAULT NULL COMMENT '自定义3';
+
+-- --------------------------------------------------------
+-- 时间 2025年9月3日
+-- by jishenghua
+-- 给平台表增加邮件发送端-发件人
+-- 给平台表增加邮件发送端-授权码
+-- 给平台表增加邮件发送端-SMTP服务器
+-- --------------------------------------------------------
+insert into jsh_platform_config (platform_key, platform_key_info, platform_value) VALUES ('email_from', '邮件发送端-发件人', '');
+insert into jsh_platform_config (platform_key, platform_key_info, platform_value) VALUES ('email_auth_code', '邮件发送端-授权码', '');
+insert into jsh_platform_config (platform_key, platform_key_info, platform_value) VALUES ('email_smtp_host', '邮件发送端-SMTP服务器', '');
+
+-- --------------------------------------------------------
+-- 时间 2025年9月21日
+-- by jishenghua
+-- 给平台表增加验证码启用标记
+-- --------------------------------------------------------
+insert into jsh_platform_config(platform_key, platform_key_info, platform_value) values ('checkcode_flag', '验证码启用标记', '1');
+
+-- --------------------------------------------------------
+-- 时间 2025年11月5日
+-- by jishenghua
+-- 给部分表加索引,提升查询速度
+-- --------------------------------------------------------
+create index number on jsh_depot_head(number) using btree;
+create index link_number on jsh_depot_head(link_number) using btree;
+create index creator on jsh_depot_head(creator) using btree;
+create index tenant_id on jsh_depot_head(tenant_id) using btree;
+create index material_extend_id on jsh_depot_item(material_extend_id) using btree;
+create index tenant_id on jsh_depot_item(tenant_id) using btree;
+create index material_id on jsh_material_extend(material_id) using btree;
+create index bar_code on jsh_material_extend(bar_code) using btree;
+create index tenant_id on jsh_material_extend(tenant_id) using btree;
+create index tenant_id on jsh_material(tenant_id) using btree;
+create index bill_no on jsh_account_head(bill_no) using btree;
+create index tenant_id on jsh_account_head(tenant_id) using btree;
+create index bill_id on jsh_account_item(bill_id) using btree;
+create index tenant_id on jsh_account_item(tenant_id) using btree;
+create index material_id on jsh_material_current_stock(material_id) using btree;
+create index depot_id on jsh_material_current_stock(depot_id) using btree;
+create index tenant_id on jsh_material_current_stock(tenant_id) using btree;
+create index material_id on jsh_material_initial_stock(material_id) using btree;
+create index depot_id on jsh_material_initial_stock(depot_id) using btree;
+create index tenant_id on jsh_material_initial_stock(tenant_id) using btree;
+create index create_time on jsh_log(create_time) using btree;
+create index tenant_id on jsh_log(tenant_id) using btree;
+create index orga_id on jsh_orga_user_rel(orga_id) using btree;
+create index user_id on jsh_orga_user_rel(user_id) using btree;
+create index creator on jsh_orga_user_rel(creator) using btree;
+create index tenant_id on jsh_orga_user_rel(tenant_id) using btree;
+create index create_time on jsh_tenant(create_time) using btree;
+create index tenant_id on jsh_tenant(tenant_id) using btree;
+create index material_id on jsh_serial_number(material_id) using btree;
+create index depot_id on jsh_serial_number(depot_id) using btree;
+create index type on jsh_user_business(type) using btree;
+create index key_id on jsh_user_business(key_id) using btree;
+create index tenant_id on jsh_user_business(tenant_id) using btree;

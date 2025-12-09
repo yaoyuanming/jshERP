@@ -39,10 +39,17 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="供应商" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择供应商" showSearch optionFilterProp="children" v-model="queryParam.organId">
+                    <a-select placeholder="请选择供应商" showSearch allow-clear optionFilterProp="children" v-model="queryParam.organId" @search="handleSearchSupplier">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initSupplier(0)"><a-icon type="reload" /> 刷新列表</div>
+                      </div>
                       <a-select-option v-for="(item,index) in supList" :key="index" :value="item.id">
                         {{ item.supplier }}
                       </a-select-option>
@@ -51,7 +58,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="仓库名称" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择仓库" showSearch optionFilterProp="children" v-model="queryParam.depotId">
+                    <a-select placeholder="请选择仓库" showSearch allow-clear optionFilterProp="children" v-model="queryParam.depotId">
                       <a-select-option v-for="(depot,index) in depotList" :key="index" :value="depot.id">
                         {{ depot.depotName }}
                       </a-select-option>
@@ -60,7 +67,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="操作员" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择操作员" showSearch optionFilterProp="children" v-model="queryParam.creator">
+                    <a-select placeholder="请选择操作员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.creator">
                       <a-select-option v-for="(item,index) in userList" :key="index" :value="item.id">
                         {{ item.userName }}
                       </a-select-option>
@@ -74,7 +81,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="结算账户" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择结算账户" showSearch optionFilterProp="children" v-model="queryParam.accountId">
+                    <a-select placeholder="请选择结算账户" showSearch allow-clear optionFilterProp="children" v-model="queryParam.accountId">
                       <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                         {{ item.name }}
                       </a-select-option>
@@ -83,7 +90,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="有无欠款" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择有无欠款" v-model="queryParam.hasDebt">
+                    <a-select placeholder="请选择有无欠款" allow-clear v-model="queryParam.hasDebt">
                       <a-select-option value="1">有欠款</a-select-option>
                       <a-select-option value="0">无欠款</a-select-option>
                     </a-select>
@@ -91,7 +98,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据状态" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择单据状态" v-model="queryParam.status">
+                    <a-select placeholder="请选择单据状态" allow-clear v-model="queryParam.status">
                       <a-select-option value="0">未审核</a-select-option>
                       <a-select-option value="9" v-if="!checkFlag">审核中</a-select-option>
                       <a-select-option value="1">已审核</a-select-option>
@@ -105,14 +112,18 @@
                     <a-input placeholder="请输入单据备注" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
         <div class="table-operator"  style="margin-top: 5px">
           <a-button v-if="btnEnableList.indexOf(1)>-1" @click="myHandleAdd" type="primary" icon="plus">新增</a-button>
           <a-button v-if="btnEnableList.indexOf(1)>-1" icon="delete" @click="batchDel">删除</a-button>
+          <a-button v-if="quickBtn.purchaseBack.indexOf(1)>-1 && btnEnableList.indexOf(1)>-1" icon="share-alt" @click="transferBill('转采购退货', quickBtn.purchaseBack)">转采购退货</a-button>
+          <a-tooltip title="可将状态是部分入库的单据强制完成">
+            <a-button v-if="inOutManageFlag && btnEnableList.indexOf(1)>-1" icon="issues-close" @click="batchForceClose">强制结单</a-button>
+          </a-tooltip>
           <a-button v-if="checkFlag && btnEnableList.indexOf(2)>-1" icon="check" @click="batchSetStatus(1)">审核</a-button>
           <a-button v-if="checkFlag && btnEnableList.indexOf(7)>-1" icon="stop" @click="batchSetStatus(0)">反审核</a-button>
           <a-button v-if="isShowExcel && btnEnableList.indexOf(3)>-1" icon="download" @click="handleExport">导出</a-button>
@@ -159,6 +170,8 @@
             :scroll="scroll"
             :loading="loading"
             :rowSelection="{selectedRowKeys: selectedRowKeys, onChange: onSelectChange}"
+            :expandedRowKeys="expandedRowKeys"
+            @expand="onExpand"
             @change="handleTableChange">
             <span slot="action" slot-scope="text, record">
               <a @click="myHandleDetail(record, '采购入库', prefixNo)">查看</a>
@@ -187,11 +200,23 @@
               <a-tag v-if="status == '3'" color="blue">部分入库</a-tag>
               <a-tag v-if="status == '9'" color="orange">审核中</a-tag>
             </template>
+            <a-table
+              bordered
+              size="small"
+              slot="expandedRowRender"
+              slot-scope="record"
+              :loading="record.loading"
+              :columns="detailColumns"
+              :dataSource="record.childrens"
+              :row-key="record => record.id"
+              :pagination="false">
+            </a-table>
           </a-table>
         </div>
         <!-- table区域-end -->
         <!-- 表单区域 -->
         <purchase-in-modal ref="modalForm" @ok="modalFormOk" @close="modalFormClose"></purchase-in-modal>
+        <purchase-back-modal ref="transferModalForm" @ok="modalFormOk" @close="modalFormClose"></purchase-back-modal>
         <bill-detail ref="modalDetail" @ok="modalFormOk" @close="modalFormClose"></bill-detail>
         <bill-excel-iframe ref="billExcelIframe" @ok="modalFormOk" @close="modalFormClose"></bill-excel-iframe>
       </a-card>
@@ -201,6 +226,7 @@
 <!-- by ji sheng hua-->
 <script>
   import PurchaseInModal from './modules/PurchaseInModal'
+  import PurchaseBackModal from './modules/PurchaseBackModal'
   import BillDetail from './dialog/BillDetail'
   import BillExcelIframe from '@/components/tools/BillExcelIframe'
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
@@ -213,10 +239,15 @@
     mixins:[JeecgListMixin,BillListMixin],
     components: {
       PurchaseInModal,
+      PurchaseBackModal,
       BillDetail,
       BillExcelIframe,
       JEllipsis,
-      JDate
+      JDate,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -236,6 +267,9 @@
           remark: ""
         },
         prefixNo: 'CGRK',
+        urlPath: '/bill/purchase_in',
+        //出入库管理开关，适合独立仓管场景
+        inOutManageFlag: false,
         labelCol: {
           span: 5
         },
@@ -301,6 +335,7 @@
           list: "/depotHead/list",
           delete: "/depotHead/delete",
           deleteBatch: "/depotHead/deleteBatch",
+          forceCloseBatch: "/depotHead/forceCloseBatch",
           batchSetStatusUrl: "/depotHead/batchSetStatus"
         }
       }
@@ -313,6 +348,8 @@
       this.getDepotData()
       this.initUser()
       this.initAccount()
+      this.initQuickBtn()
+      this.getDepotByCurrentUser()
     },
     methods: {
     }

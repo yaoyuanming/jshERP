@@ -1564,6 +1564,146 @@ public class SystemConfigExample {
             return (Criteria) this;
         }
 
+        public Criteria andZeroChangeAmountFlagIsNull() {
+            addCriterion("zero_change_amount_flag is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagIsNotNull() {
+            addCriterion("zero_change_amount_flag is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagEqualTo(String value) {
+            addCriterion("zero_change_amount_flag =", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagNotEqualTo(String value) {
+            addCriterion("zero_change_amount_flag <>", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagGreaterThan(String value) {
+            addCriterion("zero_change_amount_flag >", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagGreaterThanOrEqualTo(String value) {
+            addCriterion("zero_change_amount_flag >=", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagLessThan(String value) {
+            addCriterion("zero_change_amount_flag <", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagLessThanOrEqualTo(String value) {
+            addCriterion("zero_change_amount_flag <=", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagLike(String value) {
+            addCriterion("zero_change_amount_flag like", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagNotLike(String value) {
+            addCriterion("zero_change_amount_flag not like", value, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagIn(List<String> values) {
+            addCriterion("zero_change_amount_flag in", values, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagNotIn(List<String> values) {
+            addCriterion("zero_change_amount_flag not in", values, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagBetween(String value1, String value2) {
+            addCriterion("zero_change_amount_flag between", value1, value2, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andZeroChangeAmountFlagNotBetween(String value1, String value2) {
+            addCriterion("zero_change_amount_flag not between", value1, value2, "zeroChangeAmountFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagIsNull() {
+            addCriterion("customer_static_price_flag is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagIsNotNull() {
+            addCriterion("customer_static_price_flag is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagEqualTo(String value) {
+            addCriterion("customer_static_price_flag =", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagNotEqualTo(String value) {
+            addCriterion("customer_static_price_flag <>", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagGreaterThan(String value) {
+            addCriterion("customer_static_price_flag >", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagGreaterThanOrEqualTo(String value) {
+            addCriterion("customer_static_price_flag >=", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagLessThan(String value) {
+            addCriterion("customer_static_price_flag <", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagLessThanOrEqualTo(String value) {
+            addCriterion("customer_static_price_flag <=", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagLike(String value) {
+            addCriterion("customer_static_price_flag like", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagNotLike(String value) {
+            addCriterion("customer_static_price_flag not like", value, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagIn(List<String> values) {
+            addCriterion("customer_static_price_flag in", values, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagNotIn(List<String> values) {
+            addCriterion("customer_static_price_flag not in", values, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagBetween(String value1, String value2) {
+            addCriterion("customer_static_price_flag between", value1, value2, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
+        public Criteria andCustomerStaticPriceFlagNotBetween(String value1, String value2) {
+            addCriterion("customer_static_price_flag not between", value1, value2, "customerStaticPriceFlag");
+            return (Criteria) this;
+        }
+
         public Criteria andTenantIdIsNull() {
             addCriterion("tenant_id is null");
             return (Criteria) this;

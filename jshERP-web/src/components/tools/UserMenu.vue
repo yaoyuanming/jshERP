@@ -2,8 +2,8 @@
   <div class="user-wrapper" :class="theme">
     <span class="action" v-if="showAd">
       <a v-if="theme==='light'" class="ad_title" target="_blank" :href="payFeeUrl">
-        <a-icon type="cloud" theme="filled" style="color: yellow; font-size: 16px; line-height: 16px;" />
-        <span>管伊佳ERP网络版158元1年</span>
+        <a-icon type="cloud" theme="filled" style="color: yellow; font-size: 16px; line-height: 16px; padding-right: 5px" />
+        <span>管伊佳ERP网络版198元1年</span>
       </a>
     </span>
     <!-- update_begin author:zhaoxin date:20191129 for: 做头部菜单栏导航 -->

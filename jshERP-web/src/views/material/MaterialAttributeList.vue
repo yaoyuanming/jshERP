@@ -13,6 +13,11 @@
                   <a-input placeholder="请输入属性名查询" v-model="queryParam.attributeName"></a-input>
                 </a-form-item>
               </a-col>
+              <a-col :md="6" :sm="8">
+                <a-form-item label="属性值" :labelCol="{span: 5}" :wrapperCol="{span: 18, offset: 1}">
+                  <a-input placeholder="请输入属性值查询" v-model="queryParam.attributeValue"></a-input>
+                </a-form-item>
+              </a-col>
               <span style="float: left;overflow: hidden;" class="table-page-search-submitButtons">
                 <a-col :md="6" :sm="24">
                   <a-button type="primary" @click="searchQuery">查询</a-button>
@@ -47,6 +52,9 @@
                 <a>删除</a>
               </a-popconfirm>
             </span>
+            <template slot="customRenderAttributeValue" slot-scope="attributeValue">
+              <a-tag  v-for="(item,index) in getTagArr(attributeValue)" color="blue">{{item}}</a-tag>
+            </template>
           </a-table>
         </div>
         <!-- table区域-end -->
@@ -77,7 +85,11 @@
           offset: 1
         },
         // 查询条件
-        queryParam: {attributeName:''},
+        queryParam: {
+          attributeName:'',
+          attributeValue:''
+        },
+        urlPath: '/material/material_attribute',
         // 表头
         columns: [
           {
@@ -97,8 +109,10 @@
             align:"center",
             scopedSlots: { customRender: 'action' },
           },
-          {title: '属性名', dataIndex: 'attributeName', width: 200},
-          {title: '属性值（用竖线隔开）', dataIndex: 'attributeValue', width: 500}
+          {title: '属性名', dataIndex: 'attributeName', width: 150},
+          {title: '属性值', dataIndex: 'attributeValue', width: 750,
+            scopedSlots: { customRender: 'customRenderAttributeValue' }
+          }
         ],
         url: {
           list: "/materialAttribute/list",
@@ -111,6 +125,9 @@
 
     },
     methods: {
+      getTagArr(attributeValue) {
+        return attributeValue.split('|')
+      },
       handleEdit: function (record) {
         this.$refs.modalForm.edit(record);
         this.$refs.modalForm.title = "编辑";

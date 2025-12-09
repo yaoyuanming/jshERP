@@ -9,6 +9,7 @@ export const FinancialModalMixin = {
   data() {
     return {
       action: '',
+      actionWithOrgan: false,
       supList: [],
       cusList: [],
       retailList: [],
@@ -26,6 +27,7 @@ export const FinancialModalMixin = {
       },
       /* 原始审核是否开启 */
       checkFlag: true,
+      setTimeFlag: null,
       spans: {
         labelCol1: {span: 2},
         wrapperCol1: {span: 22},
@@ -99,7 +101,7 @@ export const FinancialModalMixin = {
     },
     initSupplier() {
       let that = this;
-      findBySelectSup({}).then((res)=>{
+      findBySelectSup({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.supList = res;
         }
@@ -107,7 +109,7 @@ export const FinancialModalMixin = {
     },
     initCustomer() {
       let that = this;
-      findBySelectCus({}).then((res)=>{
+      findBySelectCus({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.cusList = res;
         }
@@ -115,7 +117,7 @@ export const FinancialModalMixin = {
     },
     initOrgan() {
       let that = this;
-      findBySelectOrgan({}).then((res)=>{
+      findBySelectOrgan({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.organList = res;
         }
@@ -123,7 +125,7 @@ export const FinancialModalMixin = {
     },
     initRetail() {
       let that = this;
-      findBySelectRetail({}).then((res)=>{
+      findBySelectRetail({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.retailList = res;
         }
@@ -186,6 +188,58 @@ export const FinancialModalMixin = {
         }
       })
     },
+    handleSearchSupplier(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectSup({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.supList = res;
+          }
+        })
+      },500)
+    },
+    handleSearchCustomer(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectCus({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.cusList = res;
+          }
+        })
+      },500)
+    },
+    handleSearchOrgan(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectOrgan({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.organList = res;
+          }
+        })
+      },500)
+    },
+    handleSearchRetail(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectRetail({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.retailList = res;
+          }
+        })
+      },500)
+    },
     //选择供应商或客户的触发事件
     onChangeOrgan(value) {
       this.accountTable.dataSource = []
@@ -233,6 +287,25 @@ export const FinancialModalMixin = {
     workflowModalFormOk() {
       this.close()
     },
+    waitNeedListOk(organType, organId, selectBillRows) {
+      if(organId) {
+        this.form.setFieldsValue({'organId': organId})
+        if(organType === '供应商') {
+          findBySelectSup({organId: organId, limit:1}).then((res)=> {
+            this.supList = res && Array.isArray(res) ? res : [];
+          })
+        } else if(organType === '客户') {
+          findBySelectCus({organId: organId, limit:1}).then((res)=> {
+            this.cusList = res && Array.isArray(res) ? res : [];
+          })
+        }
+      }
+      if (selectBillRows && selectBillRows.length > 0) {
+        this.requestSubTableDataEx(selectBillRows, this.accountTable);
+      } else {
+        this.selectBeginNeed(organType)
+      }
+    },
     onAdded(event) {
       let that = this
       const { row, target } = event
@@ -240,6 +313,11 @@ export const FinancialModalMixin = {
       setTimeout(function(){
         that.$refs.accountDataTable.resetScrollTop((target.rows.length+1)*that.$refs.accountDataTable.rowHeight)
       },1000)
+    },
+    //删除一行或多行的时候触发
+    onDeleted(ids, target) {
+      target.recalcAllStatisticsColumns()
+      this.autoChangeAmount(target)
     },
     //单元值改变一个字符就触发一次
     onValueChange(event) {
@@ -296,7 +374,7 @@ export const FinancialModalMixin = {
       }
       tab.dataSource = listEx
       this.$nextTick(() => {
-        this.form.setFieldsValue({'totalPrice':changeAmount, 'changeAmount':changeAmount})
+        this.form.setFieldsValue({'totalPrice':changeAmount.toFixed(2), 'changeAmount':changeAmount.toFixed(2)})
       });
       typeof success === 'function' ? success(res) : ''
       tab.loading = false
@@ -322,6 +400,9 @@ export const FinancialModalMixin = {
                 listEx.push(info)
                 that.accountTable.dataSource = listEx
                 let changeAmount = info.eachAmount
+                if(changeAmount) {
+                  changeAmount = changeAmount.toFixed(2)
+                }
                 that.$nextTick(() => {
                   that.form.setFieldsValue({'totalPrice':changeAmount, 'changeAmount':changeAmount})
                 })
@@ -335,6 +416,10 @@ export const FinancialModalMixin = {
         that.$message.warning('请选择' + type + '！');
       }
     },
+    //选择-待收款或者待付款
+    handleWaitNeed(type) {
+      this.$refs.waitNeedList.show(type)
+    },
     //保存并审核
     handleOkAndCheck() {
       this.billStatus = '1'
@@ -345,7 +430,7 @@ export const FinancialModalMixin = {
       if(this.model && this.model.billNo) {
         getPlatformConfigByKey({ "platformKey": "send_workflow_url" }).then((res) => {
           if (res && res.code === 200) {
-            let sendWorkflowUrl = res.data.platformValue + '?no=' + this.model.billNo + '&type=2'
+            let sendWorkflowUrl = res.data.platformValue + '&no=' + this.model.billNo + '&type=2'
             this.$refs.modalWorkflow.show(this.model, sendWorkflowUrl, this.model.billNo, 2, 320)
             this.$refs.modalWorkflow.title = "发起流程"
           }

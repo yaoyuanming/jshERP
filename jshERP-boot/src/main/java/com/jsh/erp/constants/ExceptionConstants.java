@@ -39,6 +39,13 @@ public class ExceptionConstants {
      **/
     public static final int DELETE_FORCE_CONFIRM_CODE = 601;
     public static final String DELETE_FORCE_CONFIRM_MSG = "检测到存在依赖数据，不能删除！";
+
+    /**
+     * 文件扩展名必须为xls
+     **/
+    public static final int FILE_EXTENSION_ERROR_CODE = 701;
+    public static final String FILE_EXTENSION_ERROR_MSG = "文件扩展名必须为xls";
+
     /**
      * 用户信息
      * type = 5
@@ -146,6 +153,9 @@ public class ExceptionConstants {
     //修改收支项目信息失败
     public static final int IN_OUT_ITEM_EDIT_FAILED_CODE = 3500002;
     public static final String IN_OUT_ITEM_EDIT_FAILED_MSG = "修改收支项目信息失败";
+    //该收支项目的名称已经存在
+    public static final int IN_OUT_ITEM_NAME_EXIST_FAILED_CODE = 3500003;
+    public static final String IN_OUT_ITEM_NAME_EXIST_FAILED_MSG = "该收支项目的名称已经存在，请修改！";
     /**
      *  多单位信息
      * type = 40
@@ -286,16 +296,13 @@ public class ExceptionConstants {
     public static final String MATERIAL_BARCODE_EXISTS_MSG = "商品条码:%s重复";
     //商品-单位匹配不上
     public static final int MATERIAL_UNIT_MATE_CODE = 8000006;
-    public static final String MATERIAL_UNIT_MATE_MSG = "抱歉，商品条码:%s的单位匹配不上，请完善计量单位信息！";
+    public static final String MATERIAL_UNIT_MATE_MSG = "抱歉，商品条码:%s的单位匹配不上，请完善多单位信息！";
     //商品条码长度应该为4到40位
     public static final int MATERIAL_BARCODE_LENGTH_ERROR_CODE = 8000007;
     public static final String MATERIAL_BARCODE_LENGTH_ERROR_MSG = "商品条码:%s的长度应该为4到40位";
     //序列号和批号只能有一项
     public static final int MATERIAL_ENABLE_MUST_ONE_CODE = 8000008;
     public static final String MATERIAL_ENABLE_MUST_ONE_MSG = "抱歉，商品条码:%s的序列号和批号不能同时填1";
-    //抱歉，文件扩展名必须为xls
-    public static final int MATERIAL_EXTENSION_ERROR_CODE = 8000009;
-    public static final String MATERIAL_EXTENSION_ERROR_MSG = "抱歉，文件扩展名必须为xls";
     //名称为空
     public static final int MATERIAL_NAME_EMPTY_CODE = 8000010;
     public static final String MATERIAL_NAME_EMPTY_MSG = "第%s行名称为空";
@@ -350,6 +357,9 @@ public class ExceptionConstants {
     //基本条码为空
     public static final int MATERIAL_BARCODE_EMPTY_CODE = 8000027;
     public static final String MATERIAL_BARCODE_EMPTY_MSG = "第%s行基本条码为空";
+    //EXCEL中有副条码在系统中已存在（除自身商品之外）
+    public static final int MATERIAL_EXCEL_IMPORT_MANY_BARCODE_EXIST_CODE = 80000028;
+    public static final String MATERIAL_EXCEL_IMPORT_MANY_BARCODE_EXIST_MSG = "抱歉，EXCEL中有副条码在系统中已存在，具体副条码为：%s";
 
     /**
      *  单据信息
@@ -439,6 +449,15 @@ public class ExceptionConstants {
     //单据录入-单据最新状态不能进行批量操作
     public static final int DEPOT_ITEM_EXIST_NEW_STATUS_FAILED_CODE = 8500030;
     public static final String DEPOT_ITEM_EXIST_NEW_STATUS_FAILED_MSG = "抱歉，单据:%s最新状态不能进行批量操作";
+    //单据录入-单据在该状态不能强制结单
+    public static final int DEPOT_HEAD_FORCE_CLOSE_FAILED_CODE = 8500031;
+    public static final String DEPOT_HEAD_FORCE_CLOSE_FAILED_MSG = "抱歉，单据:%s在该状态不能强制结单";
+    //单据录入-请勿频繁提交单据
+    public static final int DEPOT_HEAD_SUBMIT_REPEAT_FAILED_CODE = 8500032;
+    public static final String DEPOT_HEAD_SUBMIT_REPEAT_FAILED_MSG = "抱歉，请不要频繁提交单据";
+    //单据录入-单据明细中存在重复的序列号
+    public static final int DEPOT_HEAD_CHECK_SERIAL_NUMBER_REPEAT_CODE = 8500033;
+    public static final String DEPOT_HEAD_CHECK_SERIAL_NUMBER_REPEAT_MSG = "抱歉，单据明细中存在重复的序列号:%s";
 
     /**
      *  单据明细信息
@@ -494,6 +513,12 @@ public class ExceptionConstants {
     //财务信息录入-付款账户和明细中的账户重复
     public static final int ACCOUNT_HEAD_ACCOUNT_REPEAT_CODE = 9500006;
     public static final String ACCOUNT_HEAD_ACCOUNT_REPEAT_MSG = "抱歉，付款账户:%s和明细中的账户重复";
+    //财务信息审核-只有未审核的单据才能审核
+    public static final int ACCOUNT_HEAD_UN_AUDIT_TO_AUDIT_FAILED_CODE = 9500007;
+    public static final String ACCOUNT_HEAD_UN_AUDIT_TO_AUDIT_FAILED_MSG = "抱歉，只有未审核的单据才能审核";
+    //财务信息反审核-只有已审核的单据才能反审核
+    public static final int ACCOUNT_HEAD_AUDIT_TO_UN_AUDIT_FAILED_CODE = 9500008;
+    public static final String ACCOUNT_HEAD_AUDIT_TO_UN_AUDIT_FAILED_MSG = "抱歉，只有已审核的单据才能反审核";
     /**
      *  财务明细信息
      * type = 100

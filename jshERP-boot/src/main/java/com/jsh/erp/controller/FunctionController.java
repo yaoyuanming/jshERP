@@ -2,19 +2,14 @@ package com.jsh.erp.controller;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.jsh.erp.constants.ExceptionConstants;
-import com.jsh.erp.datasource.entities.Function;
-import com.jsh.erp.datasource.entities.SystemConfig;
-import com.jsh.erp.datasource.entities.User;
-import com.jsh.erp.datasource.entities.UserBusiness;
-import com.jsh.erp.exception.BusinessRunTimeException;
-import com.jsh.erp.service.functions.FunctionService;
-import com.jsh.erp.service.systemConfig.SystemConfigService;
-import com.jsh.erp.service.userBusiness.UserBusinessService;
-import com.jsh.erp.utils.BaseResponseInfo;
-import com.jsh.erp.utils.ErpInfo;
-import com.jsh.erp.utils.StringUtil;
-import com.jsh.erp.utils.Tools;
+import com.jsh.erp.base.BaseController;
+import com.jsh.erp.base.TableDataInfo;
+import com.jsh.erp.datasource.entities.*;
+import com.jsh.erp.service.FunctionService;
+import com.jsh.erp.service.SystemConfigService;
+import com.jsh.erp.service.UserBusinessService;
+import com.jsh.erp.service.UserService;
+import com.jsh.erp.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;
@@ -30,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
+import static com.jsh.erp.utils.ResponseJsonUtil.returnStr;
 
 /**
  * @author ji-sheng-hua  jshERP
@@ -37,17 +33,90 @@ import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
 @RestController
 @RequestMapping(value = "/function")
 @Api(tags = {"功能管理"})
-public class FunctionController {
+public class FunctionController extends BaseController {
     private Logger logger = LoggerFactory.getLogger(FunctionController.class);
 
     @Resource
     private FunctionService functionService;
 
     @Resource
+    private UserService userService;
+
+    @Resource
     private UserBusinessService userBusinessService;
 
     @Resource
     private SystemConfigService systemConfigService;
+
+    @GetMapping(value = "/info")
+    @ApiOperation(value = "根据id获取信息")
+    public String getList(@RequestParam("id") Long id,
+                          HttpServletRequest request) throws Exception {
+        Function function = functionService.getFunction(id);
+        Map<String, Object> objectMap = new HashMap<>();
+        if(function != null) {
+            objectMap.put("info", function);
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
+
+    @GetMapping(value = "/list")
+    @ApiOperation(value = "获取信息列表")
+    public TableDataInfo getList(@RequestParam(value = Constants.SEARCH, required = false) String search,
+                                 HttpServletRequest request)throws Exception {
+        String name = StringUtil.getInfo(search, "name");
+        String type = StringUtil.getInfo(search, "type");
+        List<FunctionEx> list = functionService.select(name, type);
+        return getDataTable(list);
+    }
+
+    @PostMapping(value = "/add")
+    @ApiOperation(value = "新增")
+    public String addResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int insert = functionService.insertFunction(obj, request);
+        return returnStr(objectMap, insert);
+    }
+
+    @PutMapping(value = "/update")
+    @ApiOperation(value = "修改")
+    public String updateResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int update = functionService.updateFunction(obj, request);
+        return returnStr(objectMap, update);
+    }
+
+    @DeleteMapping(value = "/delete")
+    @ApiOperation(value = "删除")
+    public String deleteResource(@RequestParam("id") Long id, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = functionService.deleteFunction(id, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @DeleteMapping(value = "/deleteBatch")
+    @ApiOperation(value = "批量删除")
+    public String batchDeleteResource(@RequestParam("ids") String ids, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = functionService.batchDeleteFunction(ids, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @GetMapping(value = "/checkIsNameExist")
+    @ApiOperation(value = "检查名称是否存在")
+    public String checkIsNameExist(@RequestParam Long id, @RequestParam(value ="name", required = false) String name,
+                                   HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int exist = functionService.checkIsNameExist(id, name);
+        if(exist > 0) {
+            objectMap.put("status", true);
+        } else {
+            objectMap.put("status", false);
+        }
+        return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+    }
 
     @GetMapping(value = "/checkIsNumberExist")
     @ApiOperation(value = "检查编号是否存在")
@@ -118,13 +187,13 @@ public class FunctionController {
                 approvalFlag = list.get(0).getMultiLevelApprovalFlag();
             }
 
-            logger.info("Fetching functions for pNumber: " + pNumber);
-
             List<Function> dataList = functionService.getRoleFunction(pNumber);
             if (dataList.size() != 0) {
-                dataArray = getMenuByFunction(dataList, fc, approvalFlag);
-
-                // 增加首页菜单项
+                User userInfo = userService.getCurrentUser();
+                //获取当前用户所属的租户所拥有的功能id的map
+                Map<Long, Long> funIdMap = functionService.getCurrentTenantFunIdMap();
+                dataArray = getMenuByFunction(dataList, fc, approvalFlag, funIdMap, userInfo);
+                //增加首页菜单项
                 JSONObject homeItem = new JSONObject();
                 homeItem.put("id", 0);
                 homeItem.put("text", "首页");
@@ -143,29 +212,32 @@ public class FunctionController {
         return dataArray;
     }
 
-    public JSONArray getMenuByFunction(List<Function> dataList, String fc, String approvalFlag) throws Exception {
+    public JSONArray getMenuByFunction(List<Function> dataList, String fc, String approvalFlag, Map<Long, Long> funIdMap, User userInfo) throws Exception {
         JSONArray dataArray = new JSONArray();
         for (Function function : dataList) {
-            //如果关闭多级审核，遇到任务审核菜单直接跳过
-            if("0".equals(approvalFlag) && "/workflow".equals(function.getUrl())) {
-                continue;
-            }
-            JSONObject item = new JSONObject();
-            List<Function> newList = functionService.getRoleFunction(function.getNumber());
-            item.put("id", function.getId());
-            item.put("text", function.getName());
-            item.put("icon", function.getIcon());
-            item.put("url", function.getUrl());
-            item.put("component", function.getComponent());
-            if (newList.size()>0) {
-                JSONArray childrenArr = getMenuByFunction(newList, fc, approvalFlag);
-                if(childrenArr.size()>0) {
-                    item.put("children", childrenArr);
-                    dataArray.add(item);
+            //如果不是超管也不是租户就需要校验，防止分配下级用户的功能权限，大于租户的权限
+            if("admin".equals(userInfo.getLoginName()) || userInfo.getId().equals(userInfo.getTenantId()) || funIdMap.get(function.getId())!=null) {
+                //如果关闭多级审核，遇到任务审核菜单直接跳过
+                if("0".equals(approvalFlag) && "/workflow".equals(function.getUrl())) {
+                    continue;
                 }
-            } else {
-                if (fc.indexOf("[" + function.getId().toString() + "]") != -1) {
-                    dataArray.add(item);
+                JSONObject item = new JSONObject();
+                List<Function> newList = functionService.getRoleFunction(function.getNumber());
+                item.put("id", function.getId());
+                item.put("text", function.getName());
+                item.put("icon", function.getIcon());
+                item.put("url", function.getUrl());
+                item.put("component", function.getComponent());
+                if (newList.size()>0) {
+                    JSONArray childrenArr = getMenuByFunction(newList, fc, approvalFlag, funIdMap, userInfo);
+                    if(childrenArr.size()>0) {
+                        item.put("children", childrenArr);
+                        dataArray.add(item);
+                    }
+                } else {
+                    if (fc.indexOf("[" + function.getId().toString() + "]") != -1) {
+                        dataArray.add(item);
+                    }
                 }
             }
         }
@@ -183,7 +255,13 @@ public class FunctionController {
                                  HttpServletRequest request)throws Exception {
         JSONArray arr = new JSONArray();
         try {
-            List<Function> dataListFun = functionService.findRoleFunction("0");
+            User userInfo = userService.getCurrentUser();
+            //获取当前用户所拥有的功能id列表
+            List<Long> funIdList = functionService.getCurrentUserFunIdList();
+            if("admin".equals(userInfo.getLoginName())) {
+                funIdList = null;
+            }
+            List<Function> dataListFun = functionService.findRoleFunction("0", funIdList);
             //开始拼接json数据
             JSONObject outer = new JSONObject();
             outer.put("id", 0);
@@ -208,7 +286,7 @@ public class FunctionController {
                         dataList.add(fun);
                     }
                 }
-                dataArray = getFunctionList(dataList, type, keyId);
+                dataArray = getFunctionList(dataList, type, keyId, funIdList);
                 outer.put("children", dataArray);
             }
             arr.add(outer);
@@ -218,7 +296,7 @@ public class FunctionController {
         return arr;
     }
 
-    public JSONArray getFunctionList(List<Function> dataList, String type, String keyId) throws Exception {
+    public JSONArray getFunctionList(List<Function> dataList, String type, String keyId, List<Long> funIdList) throws Exception {
         JSONArray dataArray = new JSONArray();
         //获取权限信息
         String ubValue = userBusinessService.getUBValueByTypeAndKeyId(type, keyId);
@@ -230,9 +308,9 @@ public class FunctionController {
                 item.put("value", function.getId());
                 item.put("title", function.getName());
                 item.put("attributes", function.getName());
-                List<Function> funList = functionService.findRoleFunction(function.getNumber());
+                List<Function> funList = functionService.findRoleFunction(function.getNumber(), funIdList);
                 if(funList.size()>0) {
-                    JSONArray funArr = getFunctionList(funList, type, keyId);
+                    JSONArray funArr = getFunctionList(funList, type, keyId, funIdList);
                     item.put("children", funArr);
                     dataArray.add(item);
                 } else {
@@ -277,20 +355,25 @@ public class FunctionController {
                 funIds = funIds.replace("][",",");
                 List<Function> dataList = functionService.findByIds(funIds);
                 JSONObject outer = new JSONObject();
-                outer.put("total", dataList.size());
+                User userInfo = userService.getCurrentUser();
+                Map<Long, Long> funIdMap = functionService.getCurrentUserFunIdMap();
                 //存放数据json数组
                 JSONArray dataArray = new JSONArray();
                 if (null != dataList) {
                     for (Function function : dataList) {
-                        JSONObject item = new JSONObject();
-                        item.put("id", function.getId());
-                        item.put("name", function.getName());
-                        item.put("pushBtn", function.getPushBtn());
-                        item.put("btnStr", btnMap.get(function.getId()));
-                        dataArray.add(item);
+                        //如果不是超管需要校验，防止分配下级用户的按钮权限，大于自身的权限
+                        if("admin".equals(userInfo.getLoginName()) || funIdMap.get(function.getId())!=null) {
+                            JSONObject item = new JSONObject();
+                            item.put("id", function.getId());
+                            item.put("name", function.getName());
+                            item.put("pushBtn", function.getPushBtn());
+                            item.put("btnStr", btnMap.get(function.getId()));
+                            dataArray.add(item);
+                        }
                     }
                 }
                 outer.put("rows", dataArray);
+                outer.put("total", dataArray.size());
                 res.code = 200;
                 res.data = outer;
             }

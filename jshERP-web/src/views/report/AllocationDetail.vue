@@ -43,7 +43,9 @@
                   <span>总数量：{{operNumberTotalStr}}，总金额：{{allPriceTotalStr}}</span>
                 </a-form-item>
               </a-col>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据编号" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入单据编号" v-model="queryParam.number"></a-input>
@@ -85,12 +87,19 @@
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
+                  <a-form-item label="商品类别" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-tree-select style="width:100%" :dropdownStyle="{maxHeight:'200px',overflow:'auto'}" allow-clear
+                                   :treeData="categoryTree" v-model="queryParam.categoryId" placeholder="请选择商品类别">
+                    </a-tree-select>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
                   <a-form-item label="备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入备注" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- table区域-begin -->
@@ -165,9 +174,9 @@
 <script>
   import BillDetail from '../bill/dialog/BillDetail'
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
-  import { getFormatDate, getNowFormatYear, getPrevMonthFormatDate } from '@/utils/util'
+  import { getFormatDate, getPrevMonthFormatDate } from '@/utils/util'
   import {getAction} from '@/api/manage'
-  import {findBySelectSup, findBillDetailByNumber, getAllOrganizationTreeByUser} from '@/api/api'
+  import {findBySelectSup, findBillDetailByNumber, queryMaterialCategoryTreeList, getAllOrganizationTreeByUser} from '@/api/api'
   import JEllipsis from '@/components/jeecg/JEllipsis'
   import moment from 'moment'
   import Vue from 'vue'
@@ -208,6 +217,7 @@
         supList: [],
         depotList: [],
         orgaTree: [],
+        categoryTree:[],
         operNumberTotalStr: '0',
         allPriceTotalStr: '0',
         tabKey: "1",
@@ -251,6 +261,7 @@
       this.getDepotData()
       this.initSupplier()
       this.loadAllOrgaData()
+      this.loadCategoryTreeData()
       this.initColumnsSetting()
     },
     methods: {
@@ -282,16 +293,17 @@
             this.operNumberTotalStr = res.data.operNumberTotal.toFixed(2)
             this.allPriceTotalStr = res.data.allPriceTotal.toFixed(2)
             this.tableAddTotalRow(this.columns, this.dataSource)
-          }
-          if(res.code===510){
+          } else if(res.code===510){
             this.$message.warning(res.data)
+          } else {
+            this.$message.warning(res.data.message)
           }
           this.loading = false;
         })
       },
       initSupplier() {
         let that = this;
-        findBySelectSup({}).then((res)=>{
+        findBySelectSup({limit:1}).then((res)=>{
           if(res) {
             that.supList = res;
           }
@@ -312,6 +324,20 @@
         getAllOrganizationTreeByUser(params).then((res)=>{
           if(res){
             that.orgaTree = res
+          }
+        })
+      },
+      loadCategoryTreeData(){
+        let that = this;
+        let params = {};
+        params.id='';
+        queryMaterialCategoryTreeList(params).then((res)=>{
+          if(res){
+            that.categoryTree = [];
+            for (let i = 0; i < res.length; i++) {
+              let temp = res[i];
+              that.categoryTree.push(temp);
+            }
           }
         })
       },

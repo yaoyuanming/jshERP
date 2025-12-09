@@ -39,11 +39,18 @@
                   <span>实际销售金额：{{realityPriceTotal}}</span>
                 </a-form-item>
               </a-col>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="客户" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-select placeholder="请选择客户" v-model="queryParam.organId"
-                              :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children">
+                              :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children" @search="handleSearchCustomer">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer"><a-icon type="reload" /> 刷新列表</div>
+                      </div>
                       <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                         {{ item.supplier }}
                       </a-select-option>
@@ -71,8 +78,15 @@
                     </a-tree-select>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+                <a-col :md="6" :sm="24">
+                  <a-form-item label="商品类别" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-tree-select style="width:100%" :dropdownStyle="{maxHeight:'200px',overflow:'auto'}" allow-clear
+                                   :treeData="categoryTree" v-model="queryParam.categoryId" placeholder="请选择商品类别">
+                    </a-tree-select>
+                  </a-form-item>
+                </a-col>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- table区域-begin -->
@@ -141,9 +155,9 @@
 </template>
 <script>
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
-  import { getNowFormatYear, getMpListShort, getPrevMonthFormatDate, getFormatDate } from '@/utils/util'
+  import { getMpListShort, getPrevMonthFormatDate, getFormatDate } from '@/utils/util'
   import {getAction} from '@/api/manage'
-  import {findBySelectCus, getAllOrganizationTreeByUser} from '@/api/api'
+  import {findBySelectCus, queryMaterialCategoryTreeList, getAllOrganizationTreeByUser} from '@/api/api'
   import JEllipsis from '@/components/jeecg/JEllipsis'
   import moment from 'moment'
   import Vue from 'vue'
@@ -151,7 +165,11 @@
     name: "SaleOutReport",
     mixins:[JeecgListMixin],
     components: {
-      JEllipsis
+      JEllipsis,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -179,11 +197,13 @@
         cusList: [],
         depotList: [],
         orgaTree: [],
+        categoryTree:[],
         realityPriceTotal: '',
+        setTimeFlag: null,
         tabKey: "1",
         pageName: 'saleOutReport',
         // 默认索引
-        defDataIndex:['rowIndex','barCode','materialName','materialStandard','materialModel','materialOther','materialUnit',
+        defDataIndex:['rowIndex','barCode','materialName','materialStandard','materialModel','materialUnit',
           'outSum','outSumPrice','inSum','inSumPrice','outInSumPrice'],
         // 默认列
         defColumns: [
@@ -200,7 +220,9 @@
           {title: '颜色', dataIndex: 'materialColor', width: 60, ellipsis:true},
           {title: '品牌', dataIndex: 'materialBrand', width: 80, ellipsis:true},
           {title: '制造商', dataIndex: 'materialMfrs', width: 80, ellipsis:true},
-          {title: '扩展信息', dataIndex: 'materialOther', width: 150, ellipsis:true},
+          {title: '扩展1', dataIndex: 'otherField1', width: 80, ellipsis:true},
+          {title: '扩展2', dataIndex: 'otherField2', width: 80, ellipsis:true},
+          {title: '扩展3', dataIndex: 'otherField3', width: 80, ellipsis:true},
           {title: '单位', dataIndex: 'materialUnit', width: 80, ellipsis:true},
           {title: '销售数量', dataIndex: 'outSum', sorter: (a, b) => a.outSum - b.outSum, width: 80},
           {title: '销售金额', dataIndex: 'outSumPrice', sorter: (a, b) => a.outSumPrice - b.outSumPrice, width: 80},
@@ -217,7 +239,9 @@
       this.initCustomer()
       this.getDepotData()
       this.loadAllOrgaData()
+      this.loadCategoryTreeData()
       this.initColumnsSetting()
+      this.handleChangeOtherField(0)
     },
     methods: {
       moment,
@@ -251,20 +275,34 @@
             this.ipagination.total = res.data.total;
             this.tableAddTotalRow(this.columns, this.dataSource)
             this.realityPriceTotal = res.data.realityPriceTotal
-          }
-          if(res.code===510){
+          } else if(res.code===510){
             this.$message.warning(res.data)
+          } else {
+            this.$message.warning(res.data.message)
           }
           this.loading = false;
         })
       },
       initCustomer() {
         let that = this;
-        findBySelectCus({}).then((res)=>{
+        findBySelectCus({limit:1}).then((res)=>{
           if(res) {
             that.cusList = res
           }
         });
+      },
+      handleSearchCustomer(value) {
+        let that = this
+        if(this.setTimeFlag != null){
+          clearTimeout(this.setTimeFlag);
+        }
+        this.setTimeFlag = setTimeout(()=>{
+          findBySelectCus({key: value, limit:1}).then((res) => {
+            if(res) {
+              that.cusList = res;
+            }
+          })
+        },500)
       },
       getDepotData() {
         getAction('/depot/findDepotByCurrentUser').then((res)=>{
@@ -284,6 +322,20 @@
           }
         })
       },
+      loadCategoryTreeData(){
+        let that = this;
+        let params = {};
+        params.id='';
+        queryMaterialCategoryTreeList(params).then((res)=>{
+          if(res){
+            that.categoryTree = [];
+            for (let i = 0; i < res.length; i++) {
+              let temp = res[i];
+              that.categoryTree.push(temp);
+            }
+          }
+        })
+      },
       searchQuery() {
         if(this.queryParam.beginTime == '' || this.queryParam.endTime == ''){
           this.$message.warning('请选择单据日期！')
@@ -293,12 +345,13 @@
       },
       exportExcel() {
         let list = []
-        let head = '条码,名称,规格,型号,颜色,品牌,制造商,扩展信息,单位,销售数量,销售金额,退货数量,退货金额,实际销售金额'
+        let mpStr = getMpListShort(Vue.ls.get('materialPropertyList'))
+        let head = '条码,名称,规格,型号,颜色,品牌,制造商,' + mpStr + ',单位,销售数量,销售金额,退货数量,退货金额,实际销售金额'
         for (let i = 0; i < this.dataSource.length; i++) {
           let item = []
           let ds = this.dataSource[i]
           item.push(ds.barCode, ds.materialName, ds.materialStandard, ds.materialModel, ds.materialColor, ds.materialBrand,
-            ds.materialMfrs, ds.materialOther, ds.materialUnit, ds.outSum,
+            ds.materialMfrs, ds.otherField1, ds.otherField2, ds.otherField3, ds.materialUnit, ds.outSum,
             ds.outSumPrice, ds.inSum, ds.inSumPrice, ds.outInSumPrice)
           list.push(item)
         }

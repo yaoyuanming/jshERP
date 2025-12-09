@@ -27,7 +27,12 @@
               </a-col>
               <a-col :md="6" :sm="24">
                 <a-form-item label="客户" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                  <a-select placeholder="请选择客户" showSearch optionFilterProp="children" v-model="queryParam.organId">
+                  <a-select placeholder="请选择客户" showSearch allow-clear optionFilterProp="children" v-model="queryParam.organId" @search="handleSearchCustomer">
+                    <div slot="dropdownRender" slot-scope="menu">
+                      <v-nodes :vnodes="menu" />
+                      <a-divider style="margin: 4px 0;" />
+                      <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer(0)"><a-icon type="reload" /> 刷新列表</div>
+                    </div>
                     <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                       {{ item.supplier }}
                     </a-select-option>
@@ -44,10 +49,12 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="操作员" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择操作员" showSearch optionFilterProp="children" v-model="queryParam.creator">
+                    <a-select placeholder="请选择操作员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.creator">
                       <a-select-option v-for="(item,index) in userList" :key="index" :value="item.id">
                         {{ item.userName }}
                       </a-select-option>
@@ -56,7 +63,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="财务人员" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择财务人员" showSearch optionFilterProp="children" v-model="queryParam.handsPersonId">
+                    <a-select placeholder="请选择财务人员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.handsPersonId">
                       <a-select-option v-for="(item,index) in personList" :key="index" :value="item.id">
                         {{ item.name }}
                       </a-select-option>
@@ -65,7 +72,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="收款账户" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择收款账户" showSearch optionFilterProp="children" v-model="queryParam.accountId">
+                    <a-select placeholder="请选择收款账户" showSearch allow-clear optionFilterProp="children" v-model="queryParam.accountId">
                       <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                         {{ item.name }}
                       </a-select-option>
@@ -74,7 +81,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据状态" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择单据状态" v-model="queryParam.status">
+                    <a-select placeholder="请选择单据状态" allow-clear v-model="queryParam.status">
                       <a-select-option value="0">未审核</a-select-option>
                       <a-select-option value="9" v-if="!checkFlag">审核中</a-select-option>
                       <a-select-option value="1">已审核</a-select-option>
@@ -82,22 +89,23 @@
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
-                  <a-form-item label="单据备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-input placeholder="请输入单据备注" v-model="queryParam.remark"></a-input>
-                  </a-form-item>
-                </a-col>
-                <a-col :md="6" :sm="24">
                   <a-form-item label="销售单号" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入销售单号" v-model="queryParam.number"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+                <a-col :md="6" :sm="24">
+                  <a-form-item label="单据备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-input placeholder="请输入单据备注" v-model="queryParam.remark"></a-input>
+                  </a-form-item>
+                </a-col>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
         <div class="table-operator"  style="margin-top: 5px">
           <a-button v-if="btnEnableList.indexOf(1)>-1" @click="myHandleAdd" type="primary" icon="plus">新增</a-button>
+          <a-button v-if="btnEnableList.indexOf(1)>-1" @click="myHandleAddWithOrgan" icon="link">待收款({{waitTotal}})</a-button>
           <a-button v-if="btnEnableList.indexOf(1)>-1" icon="delete" @click="batchDel">删除</a-button>
           <a-button v-if="checkFlag && btnEnableList.indexOf(2)>-1" icon="check" @click="batchSetStatus(1)">审核</a-button>
           <a-button v-if="checkFlag && btnEnableList.indexOf(7)>-1" icon="stop" @click="batchSetStatus(0)">反审核</a-button>
@@ -154,7 +162,9 @@
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
   import { FinancialListMixin } from './mixins/FinancialListMixin'
   import JDate from '@/components/jeecg/JDate'
-  import Vue from 'vue'
+  import { getFormatDate, getPrevMonthFormatDate } from '@/utils/util'
+  import moment from 'moment'
+  import { getAction } from '@/api/manage'
   export default {
     name: "MoneyInList",
     mixins:[JeecgListMixin, FinancialListMixin],
@@ -162,7 +172,11 @@
       MoneyInModal,
       FinancialDetail,
       BillExcelIframe,
-      JDate
+      JDate,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -187,6 +201,7 @@
           number: ""
         },
         prefixNo: 'SK',
+        urlPath: '/financial/money_in',
         // 表头
         columns: [
           {
@@ -228,6 +243,26 @@
       this.initAccount()
     },
     methods: {
+      loadData(arg) {
+        if (arg === 1) {
+          this.ipagination.current = 1
+        }
+        let params = this.getQueryParams() //查询条件
+        this.loading = true
+        getAction(this.url.list, params).then((res) => {
+          if (res.code===200) {
+            this.dataSource = res.data.rows
+            this.ipagination.total = res.data.total
+            this.initGetNeedCount('customer')
+          } else if(res.code===510){
+            this.$message.warning(res.data)
+          } else {
+            this.$message.warning(res.data.message)
+          }
+          this.loading = false
+          this.onClearSelected()
+        })
+      }
     }
   }
 </script>

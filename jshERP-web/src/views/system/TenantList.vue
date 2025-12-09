@@ -37,14 +37,16 @@
                   </a>
                 </span>
               </a-col>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input v-model="queryParam.remark" placeholder="请输入备注"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
@@ -92,6 +94,7 @@
   import TenantModal from './modules/TenantModal'
   import {JeecgListMixin} from '@/mixins/JeecgListMixin'
   import JInput from '@/components/jeecg/JInput'
+  import { getTenantRoleList } from '@/api/api'
   export default {
     name: "TenantList",
     mixins: [JeecgListMixin],
@@ -110,6 +113,7 @@
         },
         queryParam: {
           loginName: '',
+          roleId: '',
           type: '',
           enabled: '',
           remark: ''
@@ -135,6 +139,7 @@
           { title: '登录名称', dataIndex: 'loginName', width: 100, align: "center"},
           { title: '用户数量', dataIndex: 'userCount', width: 60, align: "center"},
           { title: '用户数量限制', dataIndex: 'userNumLimit', width: 80, align: "center"},
+          { title: '租户角色', dataIndex: 'roleName', width: 80, align: "center"},
           { title: '租户类型',dataIndex: 'type',width:60,align:"center",
             scopedSlots: { customRender: 'customRenderType' }
           },

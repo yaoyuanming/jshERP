@@ -1,6 +1,6 @@
 <!-- b y 7 5 2 7  1 8 9 2 0 -->
 <template>
-  <div class="main user-layout-register">
+  <div class="main user-layout-register" :style="mainStyle">
     <a-form ref="formRegister" :autoFormCreate="(form)=>{this.form = form}" id="formRegister">
       <a-form-item
         fieldDecoratorId="username"
@@ -22,7 +22,7 @@
         <a-form-item
           fieldDecoratorId="password"
           :fieldDecoratorOptions="{rules: [{ required: false}, { validator: this.handlePasswordLevel }], validateTrigger: ['change', 'blur'], validateFirst: true}">
-          <a-input size="large" type="password" @click="handlePasswordInputClick" autocomplete="false" placeholder="至少6位密码，区分大小写"></a-input>
+          <a-input-password size="large" type="password" @click="handlePasswordInputClick" autocomplete="false" placeholder="至少6位密码，区分大小写"></a-input-password>
         </a-form-item>
       </a-popover>
 
@@ -30,10 +30,10 @@
         fieldDecoratorId="password2"
         :fieldDecoratorOptions="{rules: [{ required: true, message: '至少6位密码，区分大小写' }, { validator: this.handlePasswordCheck }], validateTrigger: ['change', 'blur'], validateFirst: true}">
 
-        <a-input size="large" type="password" autocomplete="false" placeholder="确认密码"></a-input>
+        <a-input-password size="large" type="password" autocomplete="false" placeholder="确认密码"></a-input-password>
       </a-form-item>
 
-      <a-row :gutter="0">
+      <a-row :gutter="0" v-if="checkcodeFlag==='1'">
         <a-col :span="14">
           <a-form-item
             fieldDecoratorId="inputCode"
@@ -53,7 +53,7 @@
         </a-col>
       </a-row>
 
-      <a-form-item>
+      <a-form-item :style="btnStyle">
         <a-button
           size="large"
           type="primary"
@@ -112,6 +112,9 @@
         form: null,
         uuid:'',
         randCodeImage:'',
+        checkcodeFlag:'',
+        mainStyle: '',
+        btnStyle: '',
         requestCodeSuccess:false,
         state: {
           time: 60,
@@ -136,9 +139,22 @@
       }
     },
     created () {
+      this.getCheckcodeFlag()
       this.handleChangeCheckCode();
     },
     methods: {
+      getCheckcodeFlag(){
+        getAction('/platformConfig/getPlatform/checkcodeFlag').then((res) => {
+          this.checkcodeFlag = res + ''
+          if(this.checkcodeFlag === '1') {
+            this.mainStyle = ''
+            this.btnStyle = ''
+          } else {
+            this.mainStyle = 'padding-top:20px'
+            this.btnStyle = 'margin-top:20px'
+          }
+        })
+      },
       handleChangeCheckCode(){
         this.currdatetime = new Date().getTime();
         getAction('/user/randomImage').then(res=>{

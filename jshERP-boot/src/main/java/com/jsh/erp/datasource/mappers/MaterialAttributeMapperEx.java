@@ -9,11 +9,7 @@ public interface MaterialAttributeMapperEx {
 
     List<MaterialAttribute> selectByConditionMaterialAttribute(
             @Param("attributeName") String attributeName,
-            @Param("offset") Integer offset,
-            @Param("rows") Integer rows);
-
-    Long countsByMaterialAttribute(
-            @Param("attributeField") String attributeField);
+            @Param("attributeValue") String attributeValue);
 
     int batchDeleteMaterialAttributeByIds(
             @Param("ids") String ids[]);

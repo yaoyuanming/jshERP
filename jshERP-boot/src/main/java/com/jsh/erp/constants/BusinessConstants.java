@@ -172,10 +172,9 @@ public class BusinessConstants {
     public static final byte USER_NOT_MANAGER = 1;
     /**
      * 用户状态
-     * 0：正常，1：删除，2封禁
+     * 0：正常，2封禁
      * */
     public static final byte USER_STATUS_NORMAL = 0;
-    public static final byte USER_STATUS_DELETE = 1;
     public static final byte USER_STATUS_BANNED = 2;
     /**
      * 日志操作
@@ -228,4 +227,19 @@ public class BusinessConstants {
      * 验证码有效期（分钟）
      */
     public static final Integer CAPTCHA_EXPIRATION = 2;
+
+    /**
+     * 微信登录接口
+     */
+    public static final String WEIXIN_LOGIN = "/sns/jscode2session";
+
+    /**
+     * 微信获取token接口
+     */
+    public static final String WEIXIN_TOKEN = "/cgi-bin/token";
+
+    /**
+     * 微信发送订阅消息接口
+     */
+    public static final String WEIXIN_MESSAGE_SEND = "/cgi-bin/message/subscribe/send";
 }

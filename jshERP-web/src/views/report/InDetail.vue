@@ -39,7 +39,9 @@
                   <span>总数量：{{operNumberTotalStr}}，总金额：{{allPriceTotalStr}}</span>
                 </a-form-item>
               </a-col>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据编号" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入单据编号" v-model="queryParam.number"></a-input>
@@ -48,7 +50,12 @@
                 <a-col :md="6" :sm="24">
                   <a-form-item label="往来单位" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-select placeholder="请选择往来单位" v-model="queryParam.organId"
-                              :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children">
+                              :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children" @search="handleSearchOrgan">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initOrgan"><a-icon type="reload" /> 刷新列表</div>
+                      </div>
                       <a-select-option v-for="(item,index) in organList" :key="index" :value="item.id">
                         {{ item.supplier }}
                       </a-select-option>
@@ -86,12 +93,19 @@
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
+                  <a-form-item label="商品类别" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-tree-select style="width:100%" :dropdownStyle="{maxHeight:'200px',overflow:'auto'}" allow-clear
+                                   :treeData="categoryTree" v-model="queryParam.categoryId" placeholder="请选择商品类别">
+                    </a-tree-select>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
                   <a-form-item label="备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入备注" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- table区域-begin -->
@@ -166,9 +180,9 @@
 <script>
   import BillDetail from '../bill/dialog/BillDetail'
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
-  import { getFormatDate, getNowFormatYear, getPrevMonthFormatDate } from '@/utils/util'
+  import { getFormatDate, getPrevMonthFormatDate } from '@/utils/util'
   import {getAction} from '@/api/manage'
-  import {findBySelectOrgan, findBillDetailByNumber, getUserList, getAllOrganizationTreeByUser} from '@/api/api'
+  import {findBySelectOrgan, findBillDetailByNumber, getUserList, queryMaterialCategoryTreeList, getAllOrganizationTreeByUser } from '@/api/api'
   import JEllipsis from '@/components/jeecg/JEllipsis'
   import moment from 'moment'
   import Vue from 'vue'
@@ -177,7 +191,11 @@
     mixins:[JeecgListMixin],
     components: {
       BillDetail,
-      JEllipsis
+      JEllipsis,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -210,8 +228,10 @@
         depotList: [],
         userList: [],
         orgaTree: [],
+        categoryTree:[],
         operNumberTotalStr: '0',
         allPriceTotalStr: '0',
+        setTimeFlag: null,
         tabKey: "1",
         pageName: 'inDetail',
         // 默认索引
@@ -255,9 +275,10 @@
     },
     created () {
       this.getDepotData()
-      this.initSupplier()
+      this.initOrgan()
       this.initUser()
       this.loadAllOrgaData()
+      this.loadCategoryTreeData()
       this.initColumnsSetting()
     },
     methods: {
@@ -289,20 +310,34 @@
             this.operNumberTotalStr = res.data.operNumberTotal.toFixed(2)
             this.allPriceTotalStr = res.data.allPriceTotal.toFixed(2)
             this.tableAddTotalRow(this.columns, this.dataSource)
-          }
-          if(res.code===510){
+          } else if(res.code===510){
             this.$message.warning(res.data)
+          } else {
+            this.$message.warning(res.data.message)
           }
           this.loading = false;
         })
       },
-      initSupplier() {
+      initOrgan() {
         let that = this;
-        findBySelectOrgan({}).then((res)=>{
+        findBySelectOrgan({limit:1}).then((res)=>{
           if(res) {
             that.organList = res;
           }
         });
+      },
+      handleSearchOrgan(value) {
+        let that = this
+        if(this.setTimeFlag != null){
+          clearTimeout(this.setTimeFlag);
+        }
+        this.setTimeFlag = setTimeout(()=>{
+          findBySelectOrgan({key: value, limit:1}).then((res) => {
+            if(res) {
+              that.organList = res;
+            }
+          })
+        },500)
       },
       getDepotData() {
         getAction('/depot/findDepotByCurrentUser').then((res)=>{
@@ -326,6 +361,20 @@
         getAllOrganizationTreeByUser(params).then((res)=>{
           if(res){
             that.orgaTree = res
+          }
+        })
+      },
+      loadCategoryTreeData(){
+        let that = this;
+        let params = {};
+        params.id='';
+        queryMaterialCategoryTreeList(params).then((res)=>{
+          if(res){
+            that.categoryTree = [];
+            for (let i = 0; i < res.length; i++) {
+              let temp = res[i];
+              that.categoryTree.push(temp);
+            }
           }
         })
       },

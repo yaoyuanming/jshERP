@@ -184,7 +184,7 @@
             )
         </if>
         <if test="forceFlag">
-            and dh.status = '1'
+            and (dh.status = '1' or dh.status = '2' or dh.status = '3')
         </if>
         <if test="sku != null and sku !=''">
             and di.sku = #{sku}
@@ -360,6 +360,7 @@
         MIN(m.other_field1) AS MOtherField1,
         MIN(m.other_field2) AS MOtherField2,
         MIN(m.other_field3) AS MOtherField3,
+        m.img_name,
         MIN(concat_ws('', m.unit, u.basic_unit)) AS MaterialUnit,
         MIN(m.color) AS MColor,
         m.unit_id,
@@ -396,11 +397,11 @@
         <if test="endTime != null">
             AND dh.oper_time &lt;= #{endTime}
         </if>
-        AND IFNULL(m.delete_flag, '0') != '1'
-        GROUP BY
-        m.id
-        ORDER BY
-        m.id DESC
+        and ifnull(m.delete_flag,'0') !='1'
+        group by m.id, me.bar_code, m.name, m.mfrs, m.model, m.standard, m.brand,
+        m.other_field1,m.other_field2,m.other_field3, m.img_name ,m.unit, u.basic_unit, m.color, m.unit_id, u.name,
+        me.purchase_decimal, mcs.current_unit_price
+        order by m.id desc
         <if test="offset != null and rows != null">
             LIMIT #{offset}, #{rows}
         </if>
@@ -434,7 +435,7 @@
 
     <select id="getListWithBuyOrSale" parameterType="com.jsh.erp.datasource.entities.DepotItemExample" resultMap="ResultByMaterial">
         SELECT
-        m.id AS MId,
+        m.id AS MId, di.material_extend_id,
         MIN(me.bar_code) AS bar_code,
         MIN(m.name) AS MName,
         MIN(m.mfrs) AS MMfrs,
@@ -459,7 +460,11 @@
         jsh_unit u ON m.unit_id = u.id AND IFNULL(u.delete_Flag, '0') != '1'
         WHERE
         1 = 1
-        <if test="materialParam != null and materialParam !=''">
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
             <bind name="bindKey" value="'%' + materialParam + '%'"/>
             AND (me.bar_code LIKE #{bindKey} OR m.name LIKE #{bindKey} OR m.mnemonic LIKE #{bindKey} OR m.standard LIKE #{bindKey} OR m.model LIKE #{bindKey}
             OR m.color LIKE #{bindKey} OR m.mfrs LIKE #{bindKey} OR m.brand LIKE #{bindKey} OR m.other_field1 LIKE #{bindKey}
@@ -508,7 +513,8 @@
         </if>
         AND IFNULL(m.delete_flag, '0') != '1'
         GROUP BY
-        m.id
+        m.id, di.material_extend_id, me.bar_code, m.name, m.mfrs, m.model, m.standard,
+        m.other_field1,m.other_field2,m.other_field3, m.unit, u.basic_unit, m.color, m.brand, u.name
         ORDER BY
         m.id DESC
         <if test="offset != null and rows != null">
@@ -517,12 +523,18 @@
     </select>
 
     <select id="getListWithBuyOrSaleCount" resultType="java.lang.Integer">
-        select count(1) from (select m.id
+        select count(1) from (select m.id, di.material_extend_id
         from jsh_material m
         left join jsh_depot_item di on di.material_id=m.id  and ifnull(m.delete_Flag,'0') !='1'
         left join jsh_material_extend me on me.id=di.material_extend_id  and ifnull(me.delete_Flag,'0') !='1'
         left join jsh_depot_head dh on di.header_id=dh.id  and ifnull(dh.delete_flag,'0') !='1'
         where 1=1
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="materialParam != null and materialParam !=''">
             <bind name="bindKey" value="'%'+materialParam+'%'"/>
             and (me.bar_code like #{bindKey} or m.name like #{bindKey} or m.mnemonic like #{bindKey} or m.standard like #{bindKey} or m.model like #{bindKey}
@@ -571,7 +583,7 @@
             and (dh.status = '1' or dh.status = '2' or dh.status = '3')
         </if>
         and ifnull(di.delete_flag,'0') !='1'
-        group by m.id) cc
+        group by m.id, di.material_extend_id) cc
     </select>
 
     <select id="buyOrSaleNumber" resultType="java.math.BigDecimal">
@@ -580,7 +592,7 @@
         and dh.type=#{type} and dh.sub_type=#{subType}
         and dh.oper_time &gt;= #{beginTime}
         and dh.oper_time &lt;= #{endTime}
-        and di.material_id =#{MId}
+        and di.material_extend_id =#{meId}
         <if test="creatorArray != null">
             and dh.creator in (
             <foreach collection="creatorArray" item="creator" separator=",">
@@ -617,8 +629,8 @@
         and dh.type=#{type} and dh.sub_type=#{subType}
         and dh.oper_time &gt;= #{beginTime}
         and dh.oper_time &lt;= #{endTime}
-        <if test="MId != null">
-            and di.material_id =#{MId}
+        <if test="meId != null">
+            and di.material_extend_id =#{meId}
         </if>
         <if test="creatorArray != null">
             and dh.creator in (
@@ -660,6 +672,12 @@
         and dh.type=#{type} and dh.sub_type=#{subType}
         and dh.oper_time &gt;= #{beginTime}
         and dh.oper_time &lt;= #{endTime}
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="materialParam != null and materialParam !=''">
             <bind name="bindKey" value="'%'+materialParam+'%'"/>
             and (me.bar_code like #{bindKey} or m.name like #{bindKey} or m.mnemonic like #{bindKey} or m.standard like #{bindKey} or m.model like #{bindKey})
@@ -937,6 +955,12 @@
                 #{item}
             </foreach>
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         order by depotName asc
         <if test="offset != null and rows != null">
             limit #{offset},#{rows}
@@ -967,6 +991,12 @@
         <if test="depotList.size()>0">
             and mis.depot_id in
             <foreach collection="depotList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
                 #{item}
             </foreach>
         </if>
@@ -1052,7 +1082,8 @@
         </if>
         and m.enable_batch_number =1
         and di.delete_flag!=1) tb
-        group by batch_number
+        group by id, bar_code, name, standard, model, unit_id,
+        commodity_unit, batch_number, expiration_date
         order by expiration_date asc
     </select>
 

@@ -17,7 +17,7 @@
     </template>
     <a-spin :spinning="confirmLoading">
       <a-form :form="form">
-        <a-tabs default-active-key="1" size="small">
+        <a-tabs v-model:activeKey="activeKey" size="small">
           <a-tab-pane key="1" tab="基本信息" id="materialHeadModal" forceRender>
             <a-row class="form-row" :gutter="24">
               <a-col :md="6" :sm="24">
@@ -37,7 +37,7 @@
               </a-col>
               <a-col :md="6" :sm="24">
                 <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单位"
-                  data-step="4" data-title="单位" data-intro="此处支持单个单位和多单位，勾选多单位就可以切换到多单位的下拉框，多单位需要先在【计量单位】页面进行录入。
+                  data-step="4" data-title="单位" data-intro="此处支持单个单位和多单位，勾选多单位就可以切换到多单位的下拉框，多单位需要先在【多单位】页面进行录入。
                   比如牛奶有瓶和箱两种单位，12瓶=1箱，这就构成了多单位，多单位中有个换算比例">
                   <a-row class="form-row" :gutter="24">
                     <a-col :lg="15" :md="15" :sm="24" style="padding:0px 0px 0px 12px;">
@@ -48,7 +48,7 @@
                           <v-nodes :vnodes="menu" />
                           <a-divider style="margin: 4px 0;" />
                           <div style="padding: 4px 8px; cursor: pointer;"
-                               @mousedown="e => e.preventDefault()" @click="addUnit"><a-icon type="plus" /> 新增计量单位</div>
+                               @mousedown="e => e.preventDefault()" @click="addUnit"><a-icon type="plus" /> 新增多单位</div>
                         </div>
                         <a-select-option v-for="(item,index) in unitList"
                           :key="index" :value="item.id">
@@ -118,6 +118,23 @@
               </a-col>
             </a-row>
             <a-row class="form-row" :gutter="24">
+              <a-col :lg="6" :md="6" :sm="6">
+                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField1.name">
+                  <a-input :placeholder="'请输入'+ mpShort.otherField1.name" v-decorator.trim="[ 'otherField1' ]" />
+                </a-form-item>
+              </a-col>
+              <a-col :lg="6" :md="6" :sm="6">
+                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField2.name">
+                  <a-input :placeholder="'请输入'+ mpShort.otherField2.name" v-decorator.trim="[ 'otherField2' ]" />
+                </a-form-item>
+              </a-col>
+              <a-col :lg="6" :md="6" :sm="6">
+                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField3.name">
+                  <a-input :placeholder="'请输入'+ mpShort.otherField3.name" v-decorator.trim="[ 'otherField3' ]" />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row class="form-row" :gutter="24">
               <a-col :md="6" :sm="24">
                 <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="序列号" data-step="13" data-title="序列号"
                   data-intro="此处是商品的序列号开关，如果选择了有，则在采购入库单据需要录入该商品的序列号，在销售出库单据需要选择该商品的序列号进行出库">
@@ -140,13 +157,18 @@
                   </a-tooltip>
                 </a-form-item>
               </a-col>
-              <a-col :md="6" :sm="24" v-if="!model.id">
+              <a-col :md="6" :sm="24">
                 <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="多属性" data-step="15" data-title="多属性"
-                  data-intro="多属性是针对的sku商品（比如服装、鞋帽行业），此处开关如果启用就可以在下方进行多sku的配置，配置具体的颜色、尺码之类的组合">
-                  <a-tooltip title="多属性针对服装、鞋帽等行业，需要先录入单位才能激活此处输入框">
-                    <a-tag class="tag-info" v-if="!manySkuStatus">需要先录入单位才能激活</a-tag>
+                  data-intro="多属性是针对的sku商品（比如服装、鞋帽、家纺行业），此处开关如果启用就可以在下方进行多sku的配置，配置具体的颜色、尺码之类的组合">
+                  <a-tooltip title="多属性针对服装、鞋帽、家纺等行业（注意不要勾选多单位，因为多属性商品不支持多单位，只支持单个的单位）">
                     <a-select mode="multiple" v-decorator="[ 'manySku' ]" showSearch optionFilterProp="children"
-                      placeholder="请选择多属性（可多选）" @change="onManySkuChange" v-show="manySkuStatus">
+                      placeholder="请选择多属性（可多选）" @change="onManySkuChange" :disabled="attributeStatus">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div style="padding: 4px 8px; cursor: pointer;"
+                             @mousedown="e => e.preventDefault()" @click="initMaterialAttribute">没找到？点此刷新列表 <a-icon type="reload" /></div>
+                      </div>
                       <a-select-option v-for="(item,index) in materialAttributeList" :key="index" :value="item.value" :disabled="item.disabled">
                         {{ item.name }}
                       </a-select-option>
@@ -196,7 +218,7 @@
                 :height="300"
                 :minWidth="1000"
                 :maxHeight="300"
-                :rowNumber="false"
+                :rowNumber="true"
                 :rowSelection="true"
                 :actionButton="true"
                 @valueChange="onValueChange"
@@ -220,30 +242,7 @@
               </a-col>
             </a-row>
           </a-tab-pane>
-          <a-tab-pane key="2" tab="扩展信息" forceRender>
-            <a-row v-if="mpShort.otherField1.enabled" class="form-row" :gutter="24">
-              <a-col :lg="6" :md="6" :sm="6">
-                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField1.name">
-                  <a-input v-decorator.trim="[ 'otherField1' ]" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-row v-if="mpShort.otherField2.enabled" class="form-row" :gutter="24">
-              <a-col :lg="6" :md="6" :sm="6">
-                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField2.name">
-                  <a-input v-decorator.trim="[ 'otherField2' ]" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-row v-if="mpShort.otherField3.enabled" class="form-row" :gutter="24">
-              <a-col :lg="6" :md="6" :sm="6">
-                <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" :label="mpShort.otherField3.name">
-                  <a-input v-decorator.trim="[ 'otherField3' ]" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-          </a-tab-pane>
-          <a-tab-pane key="3" tab="库存数量" forceRender>
+          <a-tab-pane key="2" tab="库存数量" forceRender>
             <j-editable-table
               ref="editableDepotTable"
               :loading="depotTable.loading"
@@ -263,7 +262,7 @@
             <!-- 表单区域 -->
             <batch-set-stock-modal ref="stockModalForm" @ok="batchSetStockModalFormOk"></batch-set-stock-modal>
           </a-tab-pane>
-          <a-tab-pane key="4" tab="图片信息" forceRender>
+          <a-tab-pane key="3" tab="图片信息" forceRender>
             <a-row class="form-row" :gutter="24" style="padding-top:20px">
               <a-col :lg="18" :md="18" :sm="24">
                 <a-form-item :labelCol="{xs: { span: 24 },sm: { span: 3 }}" :wrapperCol="{xs: { span: 24 },sm: { span: 20 }}" label="图片信息">
@@ -294,9 +293,8 @@
   import UnitModal from '../../system/modules/UnitModal'
   import JEditableTable from '@/components/jeecg/JEditableTable'
   import { FormTypes, getRefPromise, VALIDATE_NO_PASSED, validateFormAndTables } from '@/utils/JEditableTableUtil'
-  import { checkMaterial, checkMaterialBarCode, getMaterialAttributeNameList,
-    getMaterialAttributeValueListById, getMaxBarCode, queryMaterialCategoryTreeList, changeNameToPinYin } from '@/api/api'
-  import { removeByVal, autoJumpNextInput, handleIntroJs } from '@/utils/util'
+  import { changeNameToPinYin, checkMaterial, checkMaterialBarCode, getMaterialAttributeNameList, getMaterialAttributeValueListById, getMaxBarCode, queryMaterialCategoryTreeList } from '@/api/api'
+  import { autoJumpNextInput, handleIntroJs, removeByVal } from '@/utils/util'
   import { getAction, httpAction } from '@/api/manage'
   import JImageUpload from '@/components/jeecg/JImageUpload'
   import JDate from '@/components/jeecg/JDate'
@@ -322,6 +320,8 @@
         width: '1300px',
         visible: false,
         modalStyle: '',
+        action: '',
+        activeKey: '1',
         categoryTree: [],
         unitList: [],
         depotList: [],
@@ -329,12 +329,12 @@
         unitStatus: false,
         manyUnitStatus: true,
         unitChecked: false,
-        manySkuStatus: false,
         switchDisabled: false, //开关的启用状态
         barCodeSwitch: false, //生成条码开关
         maxBarCodeInfo: '', //最大条码
         meDeleteIdList: [], //删除条码信息的id数组
         prefixNo: 'material',
+        attributeStatus: false,
         materialAttributeList: [],
         skuOneTitle: '属性1',
         skuTwoTitle: '属性2',
@@ -342,6 +342,7 @@
         skuOneList: [],
         skuTwoList: [],
         skuThreeList: [],
+        meOldDataSource: [],
         manySkuSelected: 0,
         model: {},
         showOkFlag: true,
@@ -356,9 +357,9 @@
         },
         mpShort: {
           mfrs: {},
-          otherField1: {},
-          otherField2: {},
-          otherField3: {}
+          otherField1: { name: '扩展1' },
+          otherField2: { name: '扩展2' },
+          otherField3: { name: '扩展3' }
         },
         meTable: {
           loading: false,
@@ -488,12 +489,21 @@
         })
       },
       edit (record) {
+        let that = this
         this.form.resetFields();
         this.model = Object.assign({}, record);
+        let attribute = record.attribute
+        if(attribute) {
+          //构造多属性
+          let attrObj = JSON.parse(attribute)
+          this.model.manySku = attrObj.manySku
+          this.model.skuOne = attrObj.skuOne
+          this.model.skuTwo = attrObj.skuTwo
+          this.model.skuThree = attrObj.skuThree
+        }
         this.activeKey = '1'
         this.manySkuSelected = 0
         this.barCodeSwitch = false
-        this.manySkuStatus = false
         this.maxBarCodeInfo = ''
         this.visible = true
         this.meDeleteIdList = []
@@ -501,13 +511,16 @@
         if(JSON.stringify(record) === '{}') {
           this.fileList = []
         } else {
-          setTimeout(() => {
-            this.fileList = record.imgName
-          }, 5)
+          if(this.action === 'edit') {
+            setTimeout(() => {
+              this.fileList = record.imgName
+            }, 5)
+          }
         }
         this.$nextTick(() => {
           this.form.setFieldsValue(pick(this.model, 'name', 'standard', 'unit', 'unitId', 'model', 'color', 'brand', 'mnemonic',
-            'categoryId','enableSerialNumber','enableBatchNumber','position','expiryNum','weight','remark','mfrs','otherField1','otherField2','otherField3'))
+            'categoryId','enableSerialNumber','enableBatchNumber','position','expiryNum','weight','remark','mfrs',
+            'otherField1','otherField2','otherField3','manySku','skuOne','skuTwo','skuThree'))
           autoJumpNextInput('materialHeadModal')
           autoJumpNextInput('materialDetailModal')
         });
@@ -528,12 +541,21 @@
             this.unitStatus = true
             this.manyUnitStatus = false
           }
+          //编辑状态下有多属性，则不允许修改
+          if(this.model.manySku) {
+            this.attributeStatus = true
+            //加载每个多属性的下拉框
+            setTimeout(function() {
+              that.loadSkuList(that.model.manySku)
+            },1000)
+          } else {
+            this.attributeStatus = false
+          }
           let params = { materialId: this.model.id }
-          //编辑商品的时候多属性字段可以修改
-          this.meTable.columns[2].readonly = false
           this.requestMeTableData(this.url.materialsExtendList, params, this.meTable)
           this.requestDepotTableData(this.url.depotWithStock, { mId: this.model.id }, this.depotTable)
         } else {
+          this.attributeStatus = false
           this.switchDisabled = false
           this.meTable.columns[2].readonly = true
           this.requestDepotTableData(this.url.depotWithStock, { mId: 0 }, this.depotTable)
@@ -551,6 +573,22 @@
             }
           }
           tab.dataSource = res.data.rows || []
+          this.meOldDataSource = res.data.rows || []
+          //复制新增商品-初始化条码信息
+          if(this.action === 'copyAdd') {
+            getMaxBarCode({}).then((res)=> {
+              if (res && res.code === 200) {
+                let maxBarCode = res.data.barCode - 0
+                let meTableData = []
+                for (let i = 0; i < tab.dataSource.length; i++) {
+                  let meInfo = tab.dataSource[i]
+                  meInfo.barCode = maxBarCode + i + 1
+                  meTableData.push(meInfo)
+                }
+                tab.dataSource = meTableData
+              }
+            })
+          }
         }).finally(() => {
           tab.loading = false
         })
@@ -615,12 +653,23 @@
       },
       /** 发起新增或修改的请求 */
       requestAddOrEdit(formData) {
+        //复制新增商品-初始化id和租户id
+        if(this.action === 'copyAdd') {
+          this.model.id = ''
+          this.model.tenantId = ''
+          formData.id = ''
+          formData.tenantId = ''
+        }
         if(formData.meList.length === 0) {
           this.$message.warning('抱歉，请输入条码信息！');
           return;
         }
         if(formData.enableSerialNumber === '1' && formData.enableBatchNumber === '1') {
           this.$message.warning('抱歉，序列号和批号只能选择一项！');
+          return;
+        }
+        if(formData.manySku && formData.unitId) {
+          this.$message.warning('抱歉，多属性商品不能勾选多单位，请切换为单个单位！');
           return;
         }
         //校验商品是否存在，通过校验商品的名称、型号、规格、颜色、单位、制造商等
@@ -709,6 +758,14 @@
                 let depotStockObj = formData.stock[i]
                 if(skuCount && depotStockObj.initStock && depotStockObj.initStock-0) {
                   this.$message.warning('抱歉，多属性商品不能录入期初库存，建议进行盘点录入！')
+                  return
+                }
+                if(formData.enableSerialNumber === '1' && depotStockObj.initStock && depotStockObj.initStock-0) {
+                  this.$message.warning('抱歉，序列号商品不能录入期初库存，建议进行入库单据录入！')
+                  return
+                }
+                if(formData.enableBatchNumber === '1' && depotStockObj.initStock && depotStockObj.initStock-0) {
+                  this.$message.warning('抱歉，批号商品不能录入期初库存，建议进行入库单据录入！')
                   return
                 }
                 if(depotStockObj.lowSafeStock && depotStockObj.highSafeStock) {
@@ -826,21 +883,21 @@
               this.skuThreeTitle = item.name
             }
           })
-          getMaterialAttributeValueListById({'id': skuOneId}).then((res)=>{
-            if(res) {
-              this.skuOneList = res
-            }
-          })
-          getMaterialAttributeValueListById({'id': skuTwoId}).then((res)=>{
-            if(res) {
-              this.skuTwoList = res
-            }
-          })
-          getMaterialAttributeValueListById({'id': skuThreeId}).then((res)=>{
-            if(res) {
-              this.skuThreeList = res
-            }
-          })
+          if(skuOneId) {
+            getMaterialAttributeValueListById({'id': skuOneId}).then((res)=>{
+              this.skuOneList = res? res:[]
+            })
+          }
+          if(skuTwoId) {
+            getMaterialAttributeValueListById({'id': skuTwoId}).then((res)=>{
+              this.skuTwoList = res? res:[]
+            })
+          }
+          if(skuThreeId) {
+            getMaterialAttributeValueListById({'id': skuThreeId}).then((res)=>{
+              this.skuThreeList = res? res:[]
+            })
+          }
         }
         //控制条码列表中的多属性列
         if(value.length>0) {
@@ -850,6 +907,46 @@
         }
         this.barCodeSwitch = false;
         this.meTable.dataSource = []
+      },
+      //编辑页面加载的时候加载存在的sku
+      loadSkuList(value) {
+        this.manySkuSelected = value.length
+        //更新属性1和属性2和属性3的下拉框
+        if(value.length <= 3) {
+          let skuOneId = value[0]
+          let skuTwoId = value[1]
+          let skuThreeId = value[2]
+          this.materialAttributeList.forEach(item => {
+            if(item.value === skuOneId) {
+              this.skuOneTitle = item.name
+            }
+            if(item.value === skuTwoId) {
+              this.skuTwoTitle = item.name
+            }
+            if(item.value === skuThreeId) {
+              this.skuThreeTitle = item.name
+            }
+          })
+          if(skuOneId) {
+            getMaterialAttributeValueListById({'id': skuOneId}).then((res)=>{
+              this.skuOneList = res? res:[]
+              this.form.setFieldsValue(pick(this.model, 'skuOne'))
+            })
+          }
+          if(skuTwoId) {
+            getMaterialAttributeValueListById({'id': skuTwoId}).then((res)=>{
+              this.skuTwoList = res? res:[]
+              this.form.setFieldsValue(pick(this.model, 'skuTwo'))
+            })
+          }
+          if(skuThreeId) {
+            getMaterialAttributeValueListById({'id': skuThreeId}).then((res)=>{
+              this.skuThreeList = res? res:[]
+              this.form.setFieldsValue(pick(this.model, 'skuThree'))
+            })
+          }
+        }
+        this.barCodeSwitch = false
       },
       onSkuChange() {
         let skuOneData = this.form.getFieldValue('skuOne')
@@ -927,16 +1024,41 @@
           let meTableData = []
           getMaxBarCode({}).then((res)=>{
             if(res && res.code===200) {
+              let k = 0
               let maxBarCode = res.data.barCode-0
               for (let i = 0; i < barCodeSku.length; i++) {
-                let currentBarCode = maxBarCode + i + 1
-                meTableData.push({barCode: currentBarCode, commodityUnit: unit, sku: barCodeSku[i]})
+                let currentBarCode = ''
+                let currentId = ''
+                let purchaseDecimal = ''
+                let commodityDecimal = ''
+                let wholesaleDecimal = ''
+                let lowDecimal = ''
+                for (let j = 0; j < this.meOldDataSource.length; j++) {
+                  if(barCodeSku[i] === this.meOldDataSource[j].sku) {
+                    currentBarCode = this.meOldDataSource[j].barCode
+                    currentId = this.meOldDataSource[j].id
+                    purchaseDecimal = this.meOldDataSource[j].purchaseDecimal
+                    commodityDecimal = this.meOldDataSource[j].commodityDecimal
+                    wholesaleDecimal = this.meOldDataSource[j].wholesaleDecimal
+                    lowDecimal = this.meOldDataSource[j].lowDecimal
+                  }
+                }
+                if(currentBarCode) {
+                  //此时说明该sku之前就存在
+                  meTableData.push({id: currentId, barCode: currentBarCode, commodityUnit: unit, sku: barCodeSku[i],
+                    purchaseDecimal: purchaseDecimal, commodityDecimal: commodityDecimal,
+                    wholesaleDecimal: wholesaleDecimal, lowDecimal: lowDecimal})
+                } else {
+                  k = k+1
+                  currentBarCode = maxBarCode + k
+                  meTableData.push({barCode: currentBarCode, commodityUnit: unit, sku: barCodeSku[i]})
+                }
               }
               this.meTable.dataSource = meTableData
             }
           })
         } else {
-          this.$message.warning('请填写单位（注意不要勾选多单位）');
+          this.$message.warning('请填写单位（注意不要勾选多单位，因为多属性商品不支持多单位）');
           this.barCodeSwitch = false;
         }
       },
@@ -1105,21 +1227,14 @@
       loadParseMaterialProperty() {
         let mpList = Vue.ls.get('materialPropertyList')
         for (let i = 0; i < mpList.length; i++) {
-          if (mpList[i].nativeName === "制造商") {
-            this.mpShort.mfrs.name = mpList[i].anotherName
-            this.mpShort.mfrs.enabled = mpList[i].enabled
-          }
-          if (mpList[i].nativeName === "自定义1") {
+          if (mpList[i].nativeName === "扩展1") {
             this.mpShort.otherField1.name = mpList[i].anotherName
-            this.mpShort.otherField1.enabled = mpList[i].enabled
           }
-          if (mpList[i].nativeName === "自定义2") {
+          if (mpList[i].nativeName === "扩展2") {
             this.mpShort.otherField2.name = mpList[i].anotherName
-            this.mpShort.otherField2.enabled = mpList[i].enabled
           }
-          if (mpList[i].nativeName === "自定义3") {
+          if (mpList[i].nativeName === "扩展3") {
             this.mpShort.otherField3.name = mpList[i].anotherName
-            this.mpShort.otherField3.enabled = mpList[i].enabled
           }
         }
       },
@@ -1143,12 +1258,6 @@
         }
       },
       onlyUnitOnChange(e) {
-        if(e.target.value) {
-          //单位有填写了之后则显示多属性的文本框
-          this.manySkuStatus = true
-        } else {
-          this.manySkuStatus = false
-        }
         this.$refs.editableMeTable.getValues((error, values) => {
           let mArr = values
           for (let i = 0; i < mArr.length; i++) {
@@ -1226,7 +1335,7 @@
       },
       addUnit() {
         this.$refs.unitModalForm.add();
-        this.$refs.unitModalForm.title = "新增计量单位";
+        this.$refs.unitModalForm.title = "新增多单位";
         this.$refs.unitModalForm.disableSubmit = false;
       },
       unitModalFormOk() {

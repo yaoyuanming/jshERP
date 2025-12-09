@@ -18,4 +18,24 @@
         and ifnull(delete_flag,'0') !='1'
     </select>
 
+    <update id="updateValueByTypeAndKeyId">
+        update jsh_user_business
+        set value= #{ubValue}
+        where type = #{type} and key_id = #{keyId}
+        and ifnull(delete_flag,'0') !='1'
+    </update>
+
+    <select id="getUBKeyIdByTypeAndOneValue" resultType="java.lang.Long">
+        select ub.key_id from jsh_user_business ub
+        where ub.type = #{type}
+        <bind name="bindOneValue" value="'%['+oneValue+']%'"/>
+        and ub.value like #{bindOneValue}
+        and ifnull(ub.delete_flag,'0') !='1'
+    </select>
+
+    <select id="getOldListByType" resultType="com.jsh.erp.datasource.entities.UserBusiness">
+        select * from jsh_user_business ub
+        where ub.type = #{type}
+        and ifnull(ub.delete_flag,'0') !='1'
+    </select>
 </mapper>

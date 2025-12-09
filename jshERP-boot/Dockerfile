@@ -24,7 +24,7 @@ COPY target/jshERP.jar /app/jshERP.jar
 RUN mkdir -p /app/logs
 
 #COPY src/main/resources/logback-spring.xml /app/config/logback-spring.xml
-#COPY src/main/resources/application.properties /app/config/application.properties
+#COPY src/main/resources/application.properties_bak /app/config/application.properties_bak
 
 # 确保 JAR 可执行
 RUN #chmod +x /app/jshERP.jar

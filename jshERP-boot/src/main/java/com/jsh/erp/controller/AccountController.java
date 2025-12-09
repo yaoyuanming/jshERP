@@ -2,12 +2,15 @@ package com.jsh.erp.controller;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.jsh.erp.base.BaseController;
+import com.jsh.erp.base.TableDataInfo;
 import com.jsh.erp.datasource.entities.Account;
 import com.jsh.erp.datasource.vo.AccountVo4InOutList;
 import com.jsh.erp.datasource.vo.AccountVo4List;
-import com.jsh.erp.service.account.AccountService;
-import com.jsh.erp.service.systemConfig.SystemConfigService;
+import com.jsh.erp.service.AccountService;
+import com.jsh.erp.service.SystemConfigService;
 import com.jsh.erp.utils.BaseResponseInfo;
+import com.jsh.erp.utils.Constants;
 import com.jsh.erp.utils.ErpInfo;
 import com.jsh.erp.utils.StringUtil;
 import io.swagger.annotations.Api;
@@ -24,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
+import static com.jsh.erp.utils.ResponseJsonUtil.returnStr;
 
 /**
  * @author jishenghua 75271*8920
@@ -31,7 +35,7 @@ import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
 @RestController
 @RequestMapping(value = "/account")
 @Api(tags = {"账户管理"})
-public class AccountController {
+public class AccountController extends BaseController {
     private Logger logger = LoggerFactory.getLogger(AccountController.class);
 
     @Resource
@@ -39,6 +43,77 @@ public class AccountController {
 
     @Resource
     private SystemConfigService systemConfigService;
+
+    @GetMapping(value = "/info")
+    @ApiOperation(value = "根据id获取信息")
+    public String getList(@RequestParam("id") Long id,
+                          HttpServletRequest request) throws Exception {
+        Account account = accountService.getAccount(id);
+        Map<String, Object> objectMap = new HashMap<>();
+        if(account != null) {
+            objectMap.put("info", account);
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
+
+    @GetMapping(value = "/list")
+    @ApiOperation(value = "获取信息列表")
+    public TableDataInfo getList(@RequestParam(value = Constants.SEARCH, required = false) String search,
+                                 HttpServletRequest request)throws Exception {
+        String name = StringUtil.getInfo(search, "name");
+        String serialNo = StringUtil.getInfo(search, "serialNo");
+        String remark = StringUtil.getInfo(search, "remark");
+        List<AccountVo4List> list = accountService.select(name, serialNo, remark);
+        return getDataTable(list);
+    }
+
+    @PostMapping(value = "/add")
+    @ApiOperation(value = "新增")
+    public String addResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int insert = accountService.insertAccount(obj, request);
+        return returnStr(objectMap, insert);
+    }
+
+    @PutMapping(value = "/update")
+    @ApiOperation(value = "修改")
+    public String updateResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int update = accountService.updateAccount(obj, request);
+        return returnStr(objectMap, update);
+    }
+
+    @DeleteMapping(value = "/delete")
+    @ApiOperation(value = "删除")
+    public String deleteResource(@RequestParam("id") Long id, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = accountService.deleteAccount(id, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @DeleteMapping(value = "/deleteBatch")
+    @ApiOperation(value = "批量删除")
+    public String batchDeleteResource(@RequestParam("ids") String ids, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = accountService.batchDeleteAccount(ids, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @GetMapping(value = "/checkIsNameExist")
+    @ApiOperation(value = "检查名称是否存在")
+    public String checkIsNameExist(@RequestParam Long id, @RequestParam(value ="name", required = false) String name,
+                                   HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int exist = accountService.checkIsNameExist(id, name);
+        if(exist > 0) {
+            objectMap.put("status", true);
+        } else {
+            objectMap.put("status", false);
+        }
+        return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+    }
 
     /**
      * 查找结算账户信息-下拉框
@@ -176,26 +251,11 @@ public class AccountController {
      */
     @GetMapping(value = "/listWithBalance")
     @ApiOperation(value = "获取带余额的报表")
-    public BaseResponseInfo listWithBalance(@RequestParam("name") String name,
+    public TableDataInfo listWithBalance(@RequestParam("name") String name,
                                             @RequestParam("serialNo") String serialNo,
-                                            @RequestParam("currentPage") Integer currentPage,
-                                            @RequestParam("pageSize") Integer pageSize,
                                             HttpServletRequest request) throws Exception {
-        BaseResponseInfo res = new BaseResponseInfo();
-        try {
-            Map<String, Object> map = new HashMap<>();
-            List<AccountVo4List> list = accountService.listWithBalance(StringUtil.toNull(name), StringUtil.toNull(serialNo), (currentPage-1)*pageSize, pageSize);
-            Long count = accountService.listWithBalanceCount(StringUtil.toNull(name), StringUtil.toNull(serialNo));
-            map.put("rows", list);
-            map.put("total", count);
-            res.code = 200;
-            res.data = map;
-        } catch(Exception e){
-            logger.error(e.getMessage(), e);
-            res.code = 500;
-            res.data = "获取数据失败";
-        }
-        return res;
+        List<AccountVo4List> list = accountService.listWithBalance(StringUtil.toNull(name), StringUtil.toNull(serialNo));
+        return getDataTable(list);
     }
 
     /**
