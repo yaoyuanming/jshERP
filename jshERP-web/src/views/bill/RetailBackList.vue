@@ -39,10 +39,17 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="会员卡号" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择会员卡号" showSearch optionFilterProp="children" v-model="queryParam.organId">
+                    <a-select placeholder="请选择会员卡号" showSearch allow-clear optionFilterProp="children" v-model="queryParam.organId" @search="handleSearchRetail">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initRetail(0)"><a-icon type="reload" /> 刷新列表</div>
+                      </div>
                       <a-select-option v-for="(item,index) in retailList" :key="index" :value="item.id">
                         {{ item.supplier }}
                       </a-select-option>
@@ -51,7 +58,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="仓库名称" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择仓库" showSearch optionFilterProp="children" v-model="queryParam.depotId">
+                    <a-select placeholder="请选择仓库" showSearch allow-clear optionFilterProp="children" v-model="queryParam.depotId">
                       <a-select-option v-for="(depot,index) in depotList" :value="depot.id" :key="index">
                         {{ depot.depotName }}
                       </a-select-option>
@@ -60,7 +67,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="操作员" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择操作员" showSearch optionFilterProp="children" v-model="queryParam.creator">
+                    <a-select placeholder="请选择操作员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.creator">
                       <a-select-option v-for="(item,index) in userList" :key="index" :value="item.id">
                         {{ item.userName }}
                       </a-select-option>
@@ -74,7 +81,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="结算账户" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择结算账户" showSearch optionFilterProp="children" v-model="queryParam.accountId">
+                    <a-select placeholder="请选择结算账户" showSearch allow-clear optionFilterProp="children" v-model="queryParam.accountId">
                       <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                         {{ item.name }}
                       </a-select-option>
@@ -83,7 +90,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据状态" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择单据状态" v-model="queryParam.status">
+                    <a-select placeholder="请选择单据状态" allow-clear v-model="queryParam.status">
                       <a-select-option value="0">未审核</a-select-option>
                       <a-select-option value="9" v-if="!checkFlag">审核中</a-select-option>
                       <a-select-option value="1">已审核</a-select-option>
@@ -95,8 +102,8 @@
                     <a-input placeholder="请输入单据备注" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
@@ -147,6 +154,8 @@
             :scroll="scroll"
             :loading="loading"
             :rowSelection="{selectedRowKeys: selectedRowKeys, onChange: onSelectChange}"
+            :expandedRowKeys="expandedRowKeys"
+            @expand="onExpand"
             @change="handleTableChange">
             <span slot="action" slot-scope="text, record">
               <a @click="myHandleDetail(record, '零售退货入库', prefixNo)">查看</a>
@@ -164,6 +173,17 @@
               <a-tag v-if="status == '1'" color="green">已审核</a-tag>
               <a-tag v-if="status == '9'" color="orange">审核中</a-tag>
             </template>
+            <a-table
+              bordered
+              size="small"
+              slot="expandedRowRender"
+              slot-scope="record"
+              :loading="record.loading"
+              :columns="detailColumns"
+              :dataSource="record.childrens"
+              :row-key="record => record.id"
+              :pagination="false">
+            </a-table>
           </a-table>
         </div>
         <!-- table区域-end -->
@@ -193,7 +213,11 @@
       BillDetail,
       BillExcelIframe,
       JEllipsis,
-      JDate
+      JDate,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -212,6 +236,7 @@
           remark: ""
         },
         prefixNo: 'LSTH',
+        urlPath: '/bill/retail_back',
         labelCol: {
           span: 5
         },

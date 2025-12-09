@@ -10,6 +10,10 @@
         <result column="contacts" jdbcType="VARCHAR" property="contacts" />
         <result column="telephone" jdbcType="VARCHAR" property="telephone" />
         <result column="address" jdbcType="VARCHAR" property="address" />
+        <result column="bank_name" jdbcType="VARCHAR" property="bankName" />
+        <result column="account_number" jdbcType="VARCHAR" property="accountNumber" />
+        <result column="tax_num" jdbcType="VARCHAR" property="taxNum" />
+        <result column="phone_num" jdbcType="VARCHAR" property="phoneNum" />
     </resultMap>
 
     <resultMap id="ResultWithInfoExMap" type="com.jsh.erp.datasource.vo.DepotHeadVo4InDetail">
@@ -153,120 +157,21 @@
             and
             (ifnull(dh.discount_last_money,0)+ifnull(dh.other_money,0)-ifnull(dh.deposit,0)-abs(ifnull(dh.change_amount,0))=0)
         </if>
+        <if test="salesMan != null and salesMan !=''">
+            and FIND_IN_SET(#{salesMan}, dh.sales_man) > 0
+        </if>
         <if test="remark != null and remark !=''">
             <bind name="bindRemark" value="'%'+remark+'%'"/>
             and (dh.remark like #{bindRemark} or di.remark like #{bindRemark})
         </if>
         and ifnull(dh.delete_flag,'0') !='1'
         group by dh.id
-        order by dh.id desc
-        <if test="offset != null and rows != null">
-            limit #{offset},#{rows}
-        </if>) tb
+        order by dh.id desc) tb
         left join jsh_depot_head jdh on jdh.id=tb.id and ifnull(jdh.delete_flag,'0') !='1'
         left join jsh_supplier s on jdh.organ_id=s.id and ifnull(s.delete_flag,'0') !='1'
         left join jsh_user u on jdh.creator=u.id
         left join jsh_account a on jdh.account_id=a.id and ifnull(a.delete_flag,'0') !='1'
         order by jdh.id desc
-    </select>
-
-    <select id="countsByDepotHead" resultType="java.lang.Long">
-        select
-        count(1) from
-        (select distinct dh.id from jsh_depot_head dh
-        left join jsh_depot_item di on dh.Id = di.header_id and ifnull(di.delete_flag,'0') !='1'
-        left join jsh_material m on di.material_id = m.Id and ifnull(m.delete_Flag,'0') !='1'
-        left join jsh_material_extend me on di.material_extend_id = me.id and ifnull(me.delete_flag,'0') !='1'
-        WHERE 1=1
-        <if test="type != null">
-            and dh.type=#{type}
-        </if>
-        <if test="subType != null">
-            and dh.sub_type=#{subType}
-        </if>
-        <if test="statusArray != null and statusArray !=''">
-            and dh.status in (
-            <foreach collection="statusArray" item="status" separator=",">
-                #{status}
-            </foreach>
-            )
-        </if>
-        <if test="purchaseStatusArray != null and purchaseStatusArray !=''">
-            and dh.purchase_status in (
-            <foreach collection="purchaseStatusArray" item="purchaseStatus" separator=",">
-                #{purchaseStatus}
-            </foreach>
-            )
-        </if>
-        <if test="number != null">
-            <bind name="bindNumber" value="'%'+number+'%'"/>
-            and dh.number like #{bindNumber}
-        </if>
-        <if test="linkApply != null">
-            <bind name="bindLinkApply" value="'%'+linkApply+'%'"/>
-            and dh.link_apply like #{bindLinkApply}
-        </if>
-        <if test="linkNumber != null">
-            <bind name="bindLinkNumber" value="'%'+linkNumber+'%'"/>
-            and dh.link_number like #{bindLinkNumber}
-        </if>
-        <if test="beginTime != null">
-            and dh.oper_time >= #{beginTime}
-        </if>
-        <if test="endTime != null">
-            and dh.oper_time &lt;= #{endTime}
-        </if>
-        <if test="materialParam != null and materialParam !=''">
-            <bind name="bindKey" value="'%'+materialParam+'%'"/>
-            and (me.bar_code like #{bindKey} or m.name like #{bindKey} or m.mnemonic like #{bindKey} or m.standard like #{bindKey} or m.model like #{bindKey}
-            or m.color like #{bindKey} or m.mfrs like #{bindKey} or m.brand like #{bindKey} or m.other_field1 like #{bindKey}
-            or m.other_field2 like #{bindKey} or m.other_field3 like #{bindKey})
-        </if>
-        <if test="organId != null">
-            and dh.organ_id=#{organId}
-        </if>
-        <if test="organArray != null and organArray !=''">
-            and dh.organ_id in (
-            <foreach collection="organArray" item="organId" separator=",">
-                #{organId}
-            </foreach>
-            )
-        </if>
-        <if test="creator != null">
-            and dh.creator=#{creator}
-        </if>
-        <if test="depotId != null">
-            and di.depot_id=#{depotId}
-        </if>
-        <if test="depotArray != null and depotArray !=''">
-            and di.depot_id in (
-            <foreach collection="depotArray" item="depotId" separator=",">
-                #{depotId}
-            </foreach>
-            )
-        </if>
-        <if test="creatorArray != null">
-            and dh.creator in (
-            <foreach collection="creatorArray" item="creator" separator=",">
-                #{creator}
-            </foreach>
-            )
-        </if>
-        <if test="accountId != null">
-            <bind name="bindAccountId" value="'%'+accountId+'%'"/>
-            and (dh.account_id=#{accountId} or dh.account_id_list like #{bindAccountId})
-        </if>
-        <if test="hasDebt != null and hasDebt ==1">
-            and (ifnull(dh.discount_last_money,0)+ifnull(dh.other_money,0)-ifnull(dh.deposit,0)-abs(ifnull(dh.change_amount,0))>0)
-        </if>
-        <if test="hasDebt != null and hasDebt ==0">
-            and (ifnull(dh.discount_last_money,0)+ifnull(dh.other_money,0)-ifnull(dh.deposit,0)-abs(ifnull(dh.change_amount,0))=0)
-        </if>
-        <if test="remark != null and remark !=''">
-            <bind name="bindRemark" value="'%'+remark+'%'"/>
-            and (dh.remark like #{bindRemark} or di.remark like #{bindRemark})
-        </if>
-        and ifnull(dh.delete_Flag,'0') !='1') tb
     </select>
 
     <select id="findMaterialsListMapByHeaderIdList" resultType="com.jsh.erp.datasource.vo.MaterialsListVo">
@@ -339,6 +244,12 @@
             </foreach>
             ) or dh.sub_type='采购退货' or dh.sub_type='零售' or dh.sub_type='其它')
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             and dh.status = '1'
         </if>
@@ -410,6 +321,12 @@
             </foreach>
             ) or dh.sub_type='采购退货' or dh.sub_type='零售' or dh.sub_type='其它')
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             and dh.status = '1'
         </if>
@@ -471,6 +388,12 @@
                 #{organId}
             </foreach>
             ) or dh.sub_type='采购退货' or dh.sub_type='零售' or dh.sub_type='其它')
+        </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
         </if>
         <if test="forceFlag">
             and dh.status = '1'
@@ -576,6 +499,12 @@
             OR m.color LIKE #{bindKey} OR m.mfrs LIKE #{bindKey} OR m.brand LIKE #{bindKey} OR m.other_field1 LIKE #{bindKey}
             OR m.other_field2 LIKE #{bindKey} OR m.other_field3 LIKE #{bindKey})
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             AND (dh.status = '1' OR dh.status = '2' OR dh.status = '3')
         </if>
@@ -584,7 +513,8 @@
         </if>
         AND IFNULL(dh.delete_flag, '0') != '1'
         GROUP BY
-        di.material_id
+        di.material_id, me.bar_code, m.name,m.model,m.standard,m.color,m.brand,m.mfrs,
+        mc.name, m.unit, u.basic_unit
         <if test="column == 'createTime'">
             ORDER BY materialId DESC
         </if>
@@ -648,6 +578,12 @@
             and (me.bar_code like #{bindKey} or m.name like #{bindKey} or m.mnemonic like #{bindKey} or m.standard like #{bindKey} or m.model like #{bindKey}
             or m.color like #{bindKey} or m.mfrs like #{bindKey} or m.brand like #{bindKey} or m.other_field1 like #{bindKey}
             or m.other_field2 like #{bindKey} or m.other_field3 like #{bindKey})
+        </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
         </if>
         <if test="forceFlag">
             and (dh.status = '1' or dh.status = '2' or dh.status = '3')
@@ -713,6 +649,12 @@
             or m.color like #{bindKey} or m.mfrs like #{bindKey} or m.brand like #{bindKey} or m.other_field1 like #{bindKey}
             or m.other_field2 like #{bindKey} or m.other_field3 like #{bindKey})
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             and (dh.status = '1' or dh.status = '2' or dh.status = '3')
         </if>
@@ -759,6 +701,12 @@
                 #{creator}
             </foreach>
             )
+        </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
         </if>
         <if test="forceFlag">
             and dh.status = '1'
@@ -819,6 +767,12 @@
             </foreach>
             )
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             and dh.status = '1'
         </if>
@@ -871,6 +825,12 @@
             </foreach>
             )
         </if>
+        <if test="categoryList.size()>0">
+            and m.category_id in
+            <foreach collection="categoryList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
         <if test="forceFlag">
             and dh.status = '1'
         </if>
@@ -888,7 +848,7 @@
     </select>
 
     <select id="getStatementAccount" resultType="com.jsh.erp.datasource.vo.DepotHeadVo4StatementAccount">
-        select * from
+        select *, (preBackInMoney+preBackOutMoney) as preBackMoney, (backInMoney+backOutMoney) as backMoney from
         (select s.id, s.supplier, s.contacts, s.telephone, s.phone_num, s.email,
             -- 起始期初金额
             (case when s.type='供应商' then ifnull(s.begin_need_pay,0) else ifnull(s.begin_need_get,0) end) begin_need,
@@ -908,12 +868,18 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time &lt;= #{beginTime}
             and ifnull(dh.delete_flag,'0') !='1') preReturnDebtMoney,
-            -- 上期收付款
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            -- 上期收款
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time &lt;= #{beginTime}
-            and ifnull(ai.delete_flag,'0') !='1') preBackMoney,
+            and ifnull(ai.delete_flag,'0') !='1') preBackInMoney,
+            -- 上期付款
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time &lt;= #{beginTime}
+            and ifnull(ai.delete_flag,'0') !='1') preBackOutMoney,
             -- 本期欠款
             (select
             ifnull(sum(dh.discount_last_money),0)+ifnull(sum(dh.other_money),0)-ifnull(sum(dh.deposit),0)-abs(ifnull(sum(dh.change_amount),0))
@@ -930,12 +896,18 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time>#{beginTime} and dh.oper_time &lt;= #{endTime}
             and ifnull(dh.delete_flag,'0') !='1') returnDebtMoney,
-            -- 本期收付款
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            -- 本期收款
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
-            and ifnull(ai.delete_flag,'0') !='1') backMoney
+            and ifnull(ai.delete_flag,'0') !='1') backInMoney,
+            -- 本期付款
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
+            and ifnull(ai.delete_flag,'0') !='1') backOutMoney
         from jsh_supplier s
         where s.enabled=1
         and s.type=#{supplierType}
@@ -951,12 +923,12 @@
         </if>
         and ifnull(s.delete_flag,'0') !='1') tb
         <if test="hasDebt == 1">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney!=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney!=0
         </if>
         <if test="hasDebt == 0">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney=0
         </if>
-        order by begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney desc
+        order by begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney desc
         <if test="offset != null and rows != null">
             limit #{offset},#{rows}
         </if>
@@ -983,12 +955,18 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time &lt;= #{beginTime}
             and ifnull(dh.delete_flag,'0') !='1') preReturnDebtMoney,
-            -- 上期收付款
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            -- 上期收款
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time &lt;= #{beginTime}
-            and ifnull(ai.delete_flag,'0') !='1') preBackMoney,
+            and ifnull(ai.delete_flag,'0') !='1') preBackInMoney,
+            -- 上期付款
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time &lt;= #{beginTime}
+            and ifnull(ai.delete_flag,'0') !='1') preBackOutMoney,
             -- 本期欠款
             (select
             ifnull(sum(dh.discount_last_money),0)+ifnull(sum(dh.other_money),0)-ifnull(sum(dh.deposit),0)-abs(ifnull(sum(dh.change_amount),0))
@@ -1005,12 +983,18 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time>#{beginTime} and dh.oper_time &lt;= #{endTime}
             and ifnull(dh.delete_flag,'0') !='1') returnDebtMoney,
-            -- 本期收付款
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            -- 本期收款
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
-            and ifnull(ai.delete_flag,'0') !='1') backMoney
+            and ifnull(ai.delete_flag,'0') !='1') backInMoney,
+            -- 本期付款
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
+            and ifnull(ai.delete_flag,'0') !='1') backOutMoney
         from jsh_supplier s
         where s.enabled=1
         and s.type=#{supplierType}
@@ -1026,16 +1010,16 @@
         </if>
         and ifnull(s.delete_flag,'0') !='1') tb
         <if test="hasDebt == 1">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney!=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney!=0
         </if>
         <if test="hasDebt == 0">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney=0
         </if>
     </select>
 
     <select id="getStatementAccountTotalPay" resultType="com.jsh.erp.datasource.vo.DepotHeadVo4StatementAccount">
-        select sum(begin_need) begin_need, sum(preDebtMoney) preDebtMoney, sum(preReturnDebtMoney) preReturnDebtMoney, sum(preBackMoney) preBackMoney,
-               sum(debtMoney) debtMoney, sum(returnDebtMoney) returnDebtMoney, sum(backMoney) backMoney from
+        select sum(begin_need) begin_need, sum(preDebtMoney) preDebtMoney, sum(preReturnDebtMoney) preReturnDebtMoney, sum(preBackInMoney+preBackOutMoney) preBackMoney,
+               sum(debtMoney) debtMoney, sum(returnDebtMoney) returnDebtMoney, sum(backInMoney+backOutMoney) backMoney from
         (select s.id,
             (case when s.type='供应商' then ifnull(s.begin_need_pay,0) else ifnull(s.begin_need_get,0) end) begin_need,
             (select
@@ -1052,11 +1036,16 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time &lt;= #{beginTime}
             and ifnull(dh.delete_flag,'0') !='1') preReturnDebtMoney,
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time &lt;= #{beginTime}
-            and ifnull(ai.delete_flag,'0') !='1') preBackMoney,
+            and ifnull(ai.delete_flag,'0') !='1') preBackInMoney,
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time &lt;= #{beginTime}
+            and ifnull(ai.delete_flag,'0') !='1') preBackOutMoney,
             (select
             ifnull(sum(dh.discount_last_money),0)+ifnull(sum(dh.other_money),0)-ifnull(sum(dh.deposit),0)-abs(ifnull(sum(dh.change_amount),0))
             from jsh_depot_head dh
@@ -1071,11 +1060,16 @@
             and dh.type=#{typeBack} and dh.sub_type=#{subTypeBack}
             and dh.oper_time>#{beginTime} and dh.oper_time &lt;= #{endTime}
             and ifnull(dh.delete_flag,'0') !='1') returnDebtMoney,
-            (select (case when ah.type='收款' then ifnull(sum(ai.each_amount),0) else 0-ifnull(sum(ai.each_amount),0) end) from jsh_account_item ai
+            (select ifnull(sum(ai.each_amount),0) from jsh_account_item ai
             left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
-            where ah.organ_id=s.id and ah.type=#{billType}
+            where ah.organ_id=s.id and ah.type='收款'
             and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
-            and ifnull(ai.delete_flag,'0') !='1') backMoney
+            and ifnull(ai.delete_flag,'0') !='1') backInMoney,
+            (select 0-ifnull(sum(ai.each_amount),0) from jsh_account_item ai
+            left join jsh_account_head ah on ai.header_id=ah.id and ifnull(ah.delete_flag,'0') !='1'
+            where ah.organ_id=s.id and ah.type='付款'
+            and ah.bill_time>#{beginTime} and ah.bill_time &lt;= #{endTime}
+            and ifnull(ai.delete_flag,'0') !='1') backOutMoney
         from jsh_supplier s
         where s.enabled=1
         and s.type=#{supplierType}
@@ -1091,16 +1085,16 @@
         </if>
         and ifnull(s.delete_flag,'0') !='1') tb
         <if test="hasDebt == 1">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney!=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney!=0
         </if>
         <if test="hasDebt == 0">
-            where begin_need+preDebtMoney-preReturnDebtMoney-preBackMoney+debtMoney-returnDebtMoney-backMoney=0
+            where begin_need+preDebtMoney-preReturnDebtMoney-preBackInMoney-preBackOutMoney+debtMoney-returnDebtMoney-backInMoney-backOutMoney=0
         </if>
     </select>
 
     <select id="getDetailByNumber" parameterType="com.jsh.erp.datasource.entities.DepotHeadExample" resultMap="ResultMapEx">
         select dh.*, concat(dh.sub_type,dh.type) as depotHeadType, a.name AccountName,
-               s.supplier OrganName, s.contacts, s.telephone, s.address
+               s.supplier OrganName, s.contacts, s.telephone, s.address, s.bank_name, s.account_number, s.tax_num, s.phone_num
         from jsh_depot_head dh
         left join jsh_supplier s on dh.organ_id=s.id and ifnull(s.delete_Flag,'0') !='1'
         left join jsh_account a on dh.account_id=a.id and ifnull(a.delete_Flag,'0') !='1'
@@ -1188,7 +1182,7 @@
         select distinct dh.*, s.supplier OrganName, u.username userName
         from jsh_depot_head dh
         left join jsh_supplier s on dh.organ_id=s.id and ifnull(s.delete_Flag,'0') !='1'
-        left join jsh_user u on dh.creator=u.id and ifnull(u.Status,'0') !='1'
+        left join jsh_user u on dh.creator=u.id and ifnull(u.delete_flag,'0') !='1'
         left join jsh_depot_item di on dh.id = di.header_id and ifnull(di.delete_flag,'0') !='1'
         left join jsh_material m on di.material_id = m.id and ifnull(m.delete_flag,'0') !='1'
         where 1=1
@@ -1228,8 +1222,8 @@
             </foreach>
             )
         </if>
-        and (abs(dh.change_amount)+(select ifnull(sum(abs(ai.each_amount)),0) from jsh_account_item ai where ai.bill_id=dh.id and ifnull(ai.delete_flag,'0') !='1'))
-        &lt; (dh.discount_last_money + dh.other_money - ifnull(dh.deposit,0))
+        and (ifnull(abs(dh.change_amount),0)+(select ifnull(sum(abs(ai.each_amount)),0) from jsh_account_item ai where ai.bill_id=dh.id and ifnull(ai.delete_flag,'0') !='1'))
+        &lt; (ifnull(dh.discount_last_money,0) + ifnull(dh.other_money,0) - ifnull(dh.deposit,0))
         and ifnull(dh.delete_flag,'0') !='1'
         order by dh.oper_time desc
         <if test="offset != null and rows != null">
@@ -1242,7 +1236,7 @@
         select distinct dh.*, s.supplier OrganName, u.username userName
         from jsh_depot_head dh
         left join jsh_supplier s on dh.organ_id=s.id and ifnull(s.delete_Flag,'0') !='1'
-        left join jsh_user u on dh.creator=u.id and ifnull(u.Status,'0') !='1'
+        left join jsh_user u on dh.creator=u.id and ifnull(u.delete_flag,'0') !='1'
         left join jsh_depot_item di on dh.id = di.header_id and ifnull(di.delete_flag,'0') !='1'
         left join jsh_material m on di.material_id = m.id and ifnull(m.delete_flag,'0') !='1'
         where 1=1
@@ -1282,8 +1276,8 @@
             </foreach>
             )
         </if>
-        and (abs(dh.change_amount)+(select ifnull(sum(abs(ai.each_amount)),0) from jsh_account_item ai where ai.bill_id=dh.id and ifnull(ai.delete_flag,'0') !='1'))
-        &lt; (dh.discount_last_money + dh.other_money - ifnull(dh.deposit,0))
+        and (ifnull(abs(dh.change_amount),0)+(select ifnull(sum(abs(ai.each_amount)),0) from jsh_account_item ai where ai.bill_id=dh.id and ifnull(ai.delete_flag,'0') !='1'))
+        &lt; (ifnull(dh.discount_last_money,0) + ifnull(dh.other_money,0) - ifnull(dh.deposit,0))
         and ifnull(dh.delete_flag,'0') !='1' ) tb
     </select>
 
@@ -1386,7 +1380,7 @@
         </if>) tb
         left join jsh_depot_head jdh on jdh.id=tb.id and ifnull(jdh.delete_flag,'0') !='1'
         left join jsh_supplier s on jdh.organ_id=s.id and ifnull(s.delete_flag,'0') !='1'
-        left join jsh_user u on jdh.creator=u.id and ifnull(u.Status,'0') !='1'
+        left join jsh_user u on jdh.creator=u.id and ifnull(u.delete_flag,'0') !='1'
         left join jsh_account a on jdh.account_id=a.id and ifnull(a.delete_flag,'0') !='1'
     </select>
 

@@ -35,7 +35,9 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="型号" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入型号查询" v-model="queryParam.model"></a-input>
@@ -54,6 +56,21 @@
                 <a-col :md="6" :sm="24">
                   <a-form-item label="制造商" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入制造商查询" v-model="queryParam.mfrs"></a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
+                  <a-form-item :label="queryTitle.mp1" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp1 +'查询'" v-model="queryParam.otherField1"></a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
+                  <a-form-item :label="queryTitle.mp2" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp2 +'查询'" v-model="queryParam.otherField2"></a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
+                  <a-form-item :label="queryTitle.mp3" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp3 +'查询'" v-model="queryParam.otherField3"></a-input>
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
@@ -86,11 +103,6 @@
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
-                  <a-form-item label="扩展信息" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-input style="width: 100%" placeholder="请输入扩展信息查询" v-model="queryParam.materialOther"></a-input>
-                  </a-form-item>
-                </a-col>
-                <a-col :md="6" :sm="24">
                   <a-form-item label="基础重量" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input-number style="width: 100%" placeholder="请输入基础重量查询" v-model="queryParam.weight"></a-input-number>
                   </a-form-item>
@@ -105,8 +117,8 @@
                     <a-input placeholder="请输入备注查询" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
@@ -162,9 +174,7 @@
             <span slot="action" slot-scope="text, record">
               <a @click="handleEdit(record)">编辑</a>
               <a-divider v-if="btnEnableList.indexOf(1)>-1" type="vertical" />
-              <a-popconfirm v-if="btnEnableList.indexOf(1)>-1" title="确定删除吗?" @confirm="() => handleDelete(record.id)">
-                <a>删除</a>
-              </a-popconfirm>
+              <a v-if="btnEnableList.indexOf(1)>-1" @click="handleCopyAdd(record)">复制</a>
             </span>
             <template slot="customPic" slot-scope="text, record">
               <a-popover placement="right" trigger="click">
@@ -183,6 +193,11 @@
               {{record.name}}
               <a-tag v-if="record.enableSerialNumber==1" color="orange">序</a-tag>
               <a-tag v-if="record.enableBatchNumber==1" color="orange">批</a-tag>
+            </template>
+            <template slot="customRenderInitialStock" slot-scope="text, record">
+              <a-tooltip :title="record.bigUnitInitialStock">
+                {{text}}
+              </a-tooltip>
             </template>
             <template slot="customRenderStock" slot-scope="text, record">
               <a-tooltip :title="record.bigUnitStock">
@@ -238,6 +253,11 @@
           span: 18,
           offset: 1
         },
+        queryTitle: {
+          mp1: '扩展1',
+          mp2: '扩展2',
+          mp3: '扩展3'
+        },
         // 查询条件
         queryParam: {
           categoryId: undefined,
@@ -247,7 +267,9 @@
           color:'',
           brand:'',
           mfrs:'',
-          materialOther:'',
+          otherField1:'',
+          otherField2:'',
+          otherField3:'',
           weight:'',
           expiryNum:'',
           enabled: undefined,
@@ -257,6 +279,7 @@
           remark:'',
           mpList: getMpListShort(Vue.ls.get('materialPropertyList'))  //扩展属性
         },
+        urlPath: '/material/material',
         ipagination:{
           pageSizeOptions: ['10', '20', '30', '50', '100', '200']
         },
@@ -265,7 +288,7 @@
         // 实际列
         columns:[],
         // 默认索引
-        defDataIndex:['action','mBarCode','name','standard','model','color','categoryName','materialOther','unit', 'stock',
+        defDataIndex:['action','mBarCode','name','standard','model','color','categoryName','unit', 'stock',
           'purchaseDecimal','commodityDecimal','wholesaleDecimal','lowDecimal','enabled'],
         // 默认列
         defColumns: [
@@ -285,7 +308,9 @@
           {title: '品牌', dataIndex: 'brand', width: 100, ellipsis:true},
           {title: '助记码', dataIndex: 'mnemonic', width: 80, ellipsis:true},
           {title: '类别', dataIndex: 'categoryName', width: 100, ellipsis:true},
-          {title: '扩展信息', dataIndex: 'materialOther', width: 100, ellipsis:true},
+          {title: '扩展1', dataIndex: 'otherField1', width: 100, ellipsis:true},
+          {title: '扩展2', dataIndex: 'otherField2', width: 100, ellipsis:true},
+          {title: '扩展3', dataIndex: 'otherField3', width: 100, ellipsis:true},
           {title: '单位', dataIndex: 'unit', width: 100, ellipsis:true,
             customRender:function (t,r,index) {
               if (r) {
@@ -301,6 +326,9 @@
           {title: '基础重量', dataIndex: 'weight', width: 80},
           {title: '保质期', dataIndex: 'expiryNum', width: 60},
           {title: '制造商', dataIndex: 'mfrs', width: 120, ellipsis:true},
+          {title: '初始库存', dataIndex: 'initialStock', width: 80,
+            scopedSlots: { customRender: 'customRenderInitialStock' }
+          },
           {title: '库存', dataIndex: 'stock', width: 80,
             scopedSlots: { customRender: 'customRenderStock' }
           },
@@ -329,7 +357,8 @@
     created() {
       this.model = Object.assign({}, {});
       this.initColumnsSetting()
-      this.loadTreeData();
+      this.loadTreeData()
+      this.handleChangeOtherField(1)
     },
     computed: {
       importExcelUrl: function () {
@@ -450,13 +479,26 @@
           this.$refs.batchSetInfoModalForm.title = "批量编辑";
         }
       },
+      handleAdd: function () {
+        this.$refs.modalForm.action = "add";
+        this.$refs.modalForm.add();
+        this.$refs.modalForm.title = "新增";
+        this.$refs.modalForm.disableSubmit = false;
+      },
       handleEdit: function (record) {
+        this.$refs.modalForm.action = "edit";
         this.$refs.modalForm.edit(record);
         this.$refs.modalForm.title = "编辑";
         this.$refs.modalForm.disableSubmit = false;
         if(this.btnEnableList.indexOf(1)===-1) {
           this.$refs.modalForm.showOkFlag = false
         }
+      },
+      handleCopyAdd(record) {
+        this.$refs.modalForm.action = "copyAdd";
+        this.$refs.modalForm.edit(record);
+        this.$refs.modalForm.title = "复制新增";
+        this.$refs.modalForm.disableSubmit = false;
       },
       getImgUrl(imgName, type) {
         if(imgName && imgName.split(',')) {

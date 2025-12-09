@@ -15,7 +15,8 @@
     style="top:20px;height: 95%;">
     <template slot="footer">
       <a-button @click="handleCancel">取消</a-button>
-      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('销售出库')">三联打印预览</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrintPro('销售出库')">三联打印-新版</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('销售出库')">三联打印</a-button>
       <a-button v-if="checkFlag && isCanCheck" :loading="confirmLoading" @click="handleOkAndCheck">保存并审核</a-button>
       <a-button type="primary" :loading="confirmLoading" @click="handleOk">保存（Ctrl+S）</a-button>
       <!--发起多级审核-->
@@ -29,12 +30,12 @@
                          data-intro="客户必须选择，如果发现需要选择的客户尚未录入，可以在下拉框中点击新增客户进行录入。
                           特别注意，客户如果录入之后在下拉框中不显示，请检查是否给当前用户分配对应的客户权限">
               <a-select placeholder="请选择客户" v-decorator="[ 'organId', validatorRules.organId ]" :disabled="!rowCanEdit"
-                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="handleOrganChange">
+                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="handleOrganChange" @search="handleSearchCustomer">
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.customer" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div v-if="quickBtn.customer" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer(0)"><a-icon type="reload" /> 刷新列表</div>
                 </div>
                 <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                   {{ item.supplier }}
@@ -50,7 +51,7 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号" data-step="2" data-title="单据编号"
                          data-intro="单据编号自动生成、自动累加、开头是单据类型的首字母缩写，累加的规则是每次打开页面会自动占用一个新的编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number', validatorRules.number ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -69,14 +70,15 @@
           :minWidth="minWidth"
           :maxHeight="300"
           :rowNumber="false"
-          :rowSelection="rowCanEdit"
+          :rowSelection="true"
           :actionButton="rowCanEdit"
+          :actionDeleteButton="!rowCanEdit"
           :dragSortAndNumber="rowCanEdit"
           @valueChange="onValueChange"
           @added="onAdded"
           @deleted="onDeleted">
           <template #buttonAfter>
-            <a-row v-if="rowCanEdit" :gutter="24" style="float:left;padding-bottom: 5px;" data-step="4" data-title="扫码录入" data-intro="此功能支持扫码枪扫描商品条码进行录入">
+            <a-row v-if="rowCanEdit" :gutter="24" style="float:left;padding-bottom:5px;padding-right:8px" data-step="4" data-title="扫码录入" data-intro="此功能支持扫码枪扫描商品条码进行录入">
               <a-col v-if="scanStatus" :md="6" :sm="24">
                 <a-button @click="scanEnter">扫码录入</a-button>
               </a-col>
@@ -89,7 +91,7 @@
             </a-row>
             <a-row :gutter="24" style="float:left;padding-bottom: 5px;">
               <a-col :md="24" :sm="24">
-                <a-button style="margin-left: 8px" @click="handleHistoryBillList"><a-icon type="history" />历史单据</a-button>
+                <a-button @click="handleHistoryBillList"><a-icon type="history" />历史单据</a-button>
               </a-col>
             </a-row>
             <a-row v-if="rowCanEdit" :gutter="24" style="float:left;padding-bottom: 5px;padding-left:20px;">
@@ -101,7 +103,8 @@
           </template>
           <template #depotAdd>
             <a-divider v-if="quickBtn.depot" style="margin: 4px 0;" />
-            <div v-if="quickBtn.depot" style="padding: 4px 8px; cursor: pointer;" @click="addDepot"><a-icon type="plus" /> 新增仓库</div>
+            <div v-if="quickBtn.depot" class="dropdown-btn" @click="addDepot"><a-icon type="plus" /> 新增</div>
+            <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initDepot"><a-icon type="reload" /> 刷新</div>
           </template>
         </j-editable-table>
         <a-row class="form-row" :gutter="24">
@@ -146,8 +149,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.account" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增结算账户</div>
+                  <div v-if="quickBtn.account" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initAccount(0)"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -179,7 +182,7 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="销售人员" data-step="11" data-title="销售人员"
                          data-intro="销售人员的数据来自【经手人管理】菜单中的销售员">
-              <j-select-multiple style="width:185px;" placeholder="请选择销售人员" v-model="personList.value" :options="personList.options"/>
+              <j-select-multiple style="width:80%;" placeholder="请选择销售人员" v-model="personList.value" :options="personList.options"/>
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -209,6 +212,7 @@
     <history-bill-list ref="historyBillListModalForm"></history-bill-list>
     <workflow-iframe ref="modalWorkflow" @ok="workflowModalFormOk"></workflow-iframe>
     <bill-print-iframe ref="modalPrint"></bill-print-iframe>
+    <bill-print-pro-iframe ref="modalPrintPro"></bill-print-pro-iframe>
   </j-modal>
 </template>
 <script>
@@ -223,6 +227,7 @@
   import HistoryBillList from '../dialog/HistoryBillList'
   import WorkflowIframe from '@/components/tools/WorkflowIframe'
   import BillPrintIframe from '../dialog/BillPrintIframe'
+  import BillPrintProIframe from '../dialog/BillPrintProIframe'
   import { FormTypes } from '@/utils/JEditableTableUtil'
   import { JEditableTableMixin } from '@/mixins/JEditableTableMixin'
   import { BillModalMixin } from '../mixins/BillModalMixin'
@@ -231,6 +236,7 @@
   import JUpload from '@/components/jeecg/JUpload'
   import JDate from '@/components/jeecg/JDate'
   import Vue from 'vue'
+  import { getCurrentSystemConfig, findBySelectCus } from '@/api/api'
   export default {
     name: "SaleOutModal",
     mixins: [JEditableTableMixin, BillModalMixin],
@@ -245,6 +251,7 @@
       HistoryBillList,
       WorkflowIframe,
       BillPrintIframe,
+      BillPrintProIframe,
       JUpload,
       JDate,
       JSelectMultiple,
@@ -293,7 +300,9 @@
             { title: '颜色', key: 'color', width: '5%', type: FormTypes.normal },
             { title: '品牌', key: 'brand', width: '6%', type: FormTypes.normal },
             { title: '制造商', key: 'mfrs', width: '6%', type: FormTypes.normal },
-            { title: '扩展信息', key: 'materialOther', width: '5%', type: FormTypes.normal },
+            { title: '扩展1', key: 'otherField1', width: '4%', type: FormTypes.normal },
+            { title: '扩展2', key: 'otherField2', width: '4%', type: FormTypes.normal },
+            { title: '扩展3', key: 'otherField3', width: '4%', type: FormTypes.normal },
             { title: '库存', key: 'stock', width: '5%', type: FormTypes.normal },
             { title: '单位', key: 'unit', width: '4%', type: FormTypes.normal },
             { title: '序列号', key: 'snList', width: '12%', type: FormTypes.popupJsh, kind: 'sn', multi: true },
@@ -319,6 +328,11 @@
           operTime:{
             rules: [
               { required: true, message: '请输入单据日期！' }
+            ]
+          },
+          number:{
+            rules: [
+              { required: true, message: '请输入单据编号!' }
             ]
           },
           organId:{
@@ -367,6 +381,10 @@
           this.fileList = []
           this.$nextTick(() => {
             handleIntroJs(this.prefixNo, 1)
+            if(this.transferParam && this.transferParam.number) {
+              let tp = this.transferParam
+              this.linkBillListOk(tp.list, tp.number, tp.organId, tp.discountMoney, tp.deposit, tp.remark, this.defaultDepotId, tp.accountId, tp.salesMan)
+            }
           })
         } else {
           if(this.model.linkNumber) {
@@ -417,6 +435,7 @@
         this.initAccount(0)
         this.initPlatform()
         this.initQuickBtn()
+        this.handleChangeOtherField()
       },
       //提交单据时整理成formData
       classifyIntoFormData(allValues) {
@@ -458,7 +477,7 @@
         this.$refs.linkBillList.show('其它', '销售订单', '客户', "1,3")
         this.$refs.linkBillList.title = "请选择销售订单"
       },
-      linkBillListOk(selectBillDetailRows, linkNumber, organId, discountMoney, deposit, remark, depotId) {
+      linkBillListOk(selectBillDetailRows, linkNumber, organId, discountMoney, deposit, remark, depotId, accountId, salesMan) {
         let that = this
         this.rowCanEdit = false
         this.materialTable.columns[1].type = FormTypes.normal
@@ -478,8 +497,10 @@
             }
             info.linkId = info.id
             allTaxLastMoney += info.taxLastMoney
-            listEx.push(info)
-            this.changeColumnShow(info)
+            if(info.operNumber>0) {
+              listEx.push(info)
+              this.changeColumnShow(info)
+            }
           }
           this.materialTable.dataSource = listEx
           ///给优惠后金额重新赋值
@@ -503,8 +524,23 @@
               'discountLastMoney': discountLastMoney,
               'deposit': deposit,
               'changeAmount': changeAmount,
+              'accountId': accountId,
               'remark': remark
             })
+            findBySelectCus({organId: organId, limit:1}).then((res)=> {
+              this.cusList = res && Array.isArray(res) ? res : [];
+            })
+            getCurrentSystemConfig().then((res) => {
+              if (res.code === 200 && res.data) {
+                let flag = res.data.zeroChangeAmountFlag==='1'?true:false
+                if(flag) {
+                  //切换收付款的金额为0
+                  let oldChangeAmount = this.form.getFieldValue('changeAmount')-0
+                  this.form.setFieldsValue({'changeAmount':0, 'debt':oldChangeAmount})
+                }
+              }
+            })
+            this.personList.value = salesMan
           })
           //判断后进行仓库的切换
           if(depotId) {

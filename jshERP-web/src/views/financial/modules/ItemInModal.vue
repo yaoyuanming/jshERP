@@ -24,7 +24,12 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="往来单位">
               <a-select placeholder="请选择往来单位" v-decorator="[ 'organId', validatorRules.organId ]"
-                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children">
+                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @search="handleSearchOrgan">
+                <div slot="dropdownRender" slot-scope="menu">
+                  <v-nodes :vnodes="menu" />
+                  <a-divider style="margin: 4px 0;" />
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initOrgan"><a-icon type="reload" /> 刷新列表</div>
+                </div>
                 <a-select-option v-for="(item,index) in organList" :key="index" :value="item.id">
                   {{ item.supplier }}
                 </a-select-option>
@@ -38,7 +43,7 @@
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'billNo' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'billNo', validatorRules.billNo ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -48,8 +53,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.person" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addPerson"><a-icon type="plus" /> 新增经手人</div>
+                  <div v-if="quickBtn.person" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addPerson"><a-icon type="plus" /> 新增经手人</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initPerson"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in personList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -72,7 +77,8 @@
           @valueChange="onValueChange">
           <template #inOutItemAdd>
             <a-divider v-if="quickBtn.inOutItem" style="margin: 4px 0;" />
-            <div v-if="quickBtn.inOutItem" style="padding: 4px 8px; cursor: pointer;" @click="addInOutItem('in')"><a-icon type="plus" /> 新增收支项目</div>
+            <div v-if="quickBtn.inOutItem" class="dropdown-btn" @click="addInOutItem('in')"><a-icon type="plus" /> 新增收支项目</div>
+            <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initInOutItem('in')"><a-icon type="reload" /> 刷新列表</div>
           </template>
         </j-editable-table>
         <a-row class="form-row" :gutter="24">
@@ -90,8 +96,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.account" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增结算账户</div>
+                  <div v-if="quickBtn.account" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initAccount"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -186,14 +192,14 @@
         },
         confirmLoading: false,
         validatorRules:{
-          organId:{
-            rules: [
-              { required: true, message: '请选择客户!' }
-            ]
-          },
           billTime:{
             rules: [
               { required: true, message: '请选择单据日期!' }
+            ]
+          },
+          billNo:{
+            rules: [
+              { required: true, message: '请输入单据编号!' }
             ]
           },
           accountId:{

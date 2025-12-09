@@ -3,6 +3,8 @@ package com.jsh.erp.controller;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.jsh.erp.base.BaseController;
+import com.jsh.erp.base.TableDataInfo;
 import com.jsh.erp.constants.BusinessConstants;
 import com.jsh.erp.constants.ExceptionConstants;
 import com.jsh.erp.datasource.entities.Tenant;
@@ -11,14 +13,8 @@ import com.jsh.erp.datasource.entities.UserEx;
 import com.jsh.erp.datasource.vo.TreeNodeEx;
 import com.jsh.erp.exception.BusinessParamCheckingException;
 import com.jsh.erp.exception.BusinessRunTimeException;
-import com.jsh.erp.service.redis.RedisService;
-import com.jsh.erp.service.role.RoleService;
-import com.jsh.erp.service.tenant.TenantService;
-import com.jsh.erp.service.user.UserService;
-import com.jsh.erp.utils.BaseResponseInfo;
-import com.jsh.erp.utils.ErpInfo;
-import com.jsh.erp.utils.RandImageUtil;
-import com.jsh.erp.utils.Tools;
+import com.jsh.erp.service.*;
+import com.jsh.erp.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;
@@ -29,12 +25,12 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
+import static com.jsh.erp.utils.ResponseJsonUtil.returnStr;
 
 /**
  * @author ji_sheng_hua 管伊佳erp
@@ -42,7 +38,7 @@ import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
 @RestController
 @RequestMapping(value = "/user")
 @Api(tags = {"用户管理"})
-public class UserController {
+public class UserController extends BaseController {
     private Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Value("${manage.roleId}")
@@ -58,10 +54,83 @@ public class UserController {
     private TenantService tenantService;
 
     @Resource
+    private UserBusinessService userBusinessService;
+
+    @Resource
     private RedisService redisService;
 
     private static String SUCCESS = "操作成功";
     private static String ERROR = "操作失败";
+
+    @GetMapping(value = "/info")
+    @ApiOperation(value = "根据id获取信息")
+    public String getList(@RequestParam("id") Long id,
+                          HttpServletRequest request) throws Exception {
+        User user = userService.getUser(id);
+        Map<String, Object> objectMap = new HashMap<>();
+        if(user != null) {
+            objectMap.put("info", user);
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
+
+    @GetMapping(value = "/list")
+    @ApiOperation(value = "获取信息列表")
+    public TableDataInfo getList(@RequestParam(value = Constants.SEARCH, required = false) String search,
+                                 HttpServletRequest request)throws Exception {
+        String userName = StringUtil.getInfo(search, "userName");
+        String loginName = StringUtil.getInfo(search, "loginName");
+        List<UserEx> list = userService.select(userName, loginName);
+        return getDataTable(list);
+    }
+
+    @PostMapping(value = "/add")
+    @ApiOperation(value = "新增")
+    public String addResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int insert = userService.insertUser(obj, request);
+        return returnStr(objectMap, insert);
+    }
+
+    @PutMapping(value = "/update")
+    @ApiOperation(value = "修改")
+    public String updateResource(@RequestBody JSONObject obj, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int update = userService.updateUser(obj, request);
+        return returnStr(objectMap, update);
+    }
+
+    @DeleteMapping(value = "/delete")
+    @ApiOperation(value = "删除")
+    public String deleteResource(@RequestParam("id") Long id, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = userService.deleteUser(id, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @DeleteMapping(value = "/deleteBatch")
+    @ApiOperation(value = "批量删除")
+    public String batchDeleteResource(@RequestParam("ids") String ids, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = userService.batchDeleteUser(ids, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @GetMapping(value = "/checkIsNameExist")
+    @ApiOperation(value = "检查名称是否存在")
+    public String checkIsNameExist(@RequestParam Long id, @RequestParam(value ="name", required = false) String name,
+                                   HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int exist = userService.checkIsNameExist(id, name);
+        if(exist > 0) {
+            objectMap.put("status", true);
+        } else {
+            objectMap.put("status", false);
+        }
+        return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+    }
 
     @PostMapping(value = "/login")
     @ApiOperation(value = "登录")
@@ -166,7 +235,7 @@ public class UserController {
         Long id = jsonObject.getLong("id");
         String password = "123456";
         String md5Pwd = Tools.md5Encryp(password);
-        int update = userService.resetPwd(md5Pwd, id);
+        int update = userService.resetPwd(md5Pwd, id, request);
         if(update > 0) {
             return returnJson(objectMap, SUCCESS, ErpInfo.OK.code);
         } else {
@@ -188,7 +257,7 @@ public class UserController {
             //必须和原始密码一致才可以更新密码
             if (oldpwd.equalsIgnoreCase(user.getPassword())) {
                 user.setPassword(password);
-                flag = userService.updateUserByObj(user); //1-成功
+                flag = userService.updateUserByObj(user, request); //1-成功
                 info = "修改成功";
             } else {
                 flag = 2; //原始密码输入错误
@@ -388,29 +457,51 @@ public class UserController {
     }
 
     /**
-     * 获取随机校验码【后续会废弃】
-     * @param response
-     * @param key
+     * 获取对应的用户显示
+     * @param type
+     * @param oneValue
+     * @param request
      * @return
      */
-    @GetMapping(value = "/randomImage/{key}")
-    @ApiOperation(value = "获取随机校验码【后续会废弃】")
-    public BaseResponseInfo randomImage(HttpServletResponse response,@PathVariable String key){
-        BaseResponseInfo res = new BaseResponseInfo();
+    @GetMapping(value = "/getUserWithChecked")
+    @ApiOperation(value = "获取对应的用户显示")
+    public JSONArray getUserWithChecked(@RequestParam("UBType") String type, @RequestParam("UBValue") String oneValue,
+                                  HttpServletRequest request) throws Exception{
+        JSONArray arr = new JSONArray();
         try {
-            Map<String, Object> data = new HashMap<>();
-            String codeNum = Tools.getCharAndNum(4);
-            String base64 = RandImageUtil.generate(codeNum);
-            data.put("codeNum", codeNum);
-            data.put("base64", base64);
-            res.code = 200;
-            res.data = data;
+            //获取权限信息
+            List<Long> keyIdList = userBusinessService.getUBKeyIdByTypeAndOneValue(type, oneValue);
+            Map<Long, Long> keyIdMap = keyIdList.stream().collect(Collectors.toMap(Function.identity(),Function.identity()));
+            List<User> dataList = userService.getUser(request);
+            //开始拼接json数据
+            JSONObject outer = new JSONObject();
+            outer.put("id", 0);
+            outer.put("key", 0);
+            outer.put("value", 0);
+            outer.put("title", "用户列表");
+            outer.put("attributes", "用户列表");
+            //存放数据json数组
+            JSONArray dataArray = new JSONArray();
+            if (null != dataList) {
+                for (User user : dataList) {
+                    JSONObject item = new JSONObject();
+                    item.put("id", user.getId());
+                    item.put("key", user.getId());
+                    item.put("value", user.getId());
+                    item.put("title", user.getLoginName() + "(" + user.getUsername() + ")");
+                    item.put("attributes", user.getLoginName());
+                    if (keyIdMap.get(user.getId())!=null) {
+                        item.put("checked", true);
+                    }
+                    dataArray.add(item);
+                }
+            }
+            outer.put("children", dataArray);
+            arr.add(outer);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
-            res.code = 500;
-            res.data = "获取失败";
         }
-        return res;
+        return arr;
     }
 
     /**

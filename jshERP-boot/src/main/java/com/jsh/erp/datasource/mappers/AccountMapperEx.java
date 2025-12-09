@@ -20,13 +20,6 @@ public interface AccountMapperEx {
     List<AccountVo4List> selectByConditionAccount(
             @Param("name") String name,
             @Param("serialNo") String serialNo,
-            @Param("remark") String remark,
-            @Param("offset") Integer offset,
-            @Param("rows") Integer rows);
-
-    Long countsByAccount(
-            @Param("name") String name,
-            @Param("serialNo") String serialNo,
             @Param("remark") String remark);
 
     BigDecimal getAccountSum(

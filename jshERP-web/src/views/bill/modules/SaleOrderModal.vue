@@ -15,7 +15,8 @@
     style="top:20px;height: 95%;">
     <template slot="footer">
       <a-button @click="handleCancel">取消</a-button>
-      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('销售订单')">三联打印预览</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrintPro('销售订单')">三联打印-新版</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('销售订单')">三联打印</a-button>
       <a-button v-if="checkFlag && isCanCheck" :loading="confirmLoading" @click="handleOkAndCheck">保存并审核</a-button>
       <a-button type="primary" :loading="confirmLoading" @click="handleOk">保存（Ctrl+S）</a-button>
       <!--发起多级审核-->
@@ -29,12 +30,12 @@
               data-intro="客户必须选择，如果发现需要选择的客户尚未录入，可以在下拉框中点击新增客户进行录入。
                           特别注意，客户如果录入之后在下拉框中不显示，请检查是否给当前用户分配对应的客户权限">
               <a-select placeholder="请选择客户" v-decorator="[ 'organId', validatorRules.organId ]"
-                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="handleOrganChange">
+                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="handleOrganChange" @search="handleSearchCustomer">
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.customer" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div v-if="quickBtn.customer" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer(0)"><a-icon type="reload" /> 刷新列表</div>
                 </div>
                 <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                   {{ item.supplier }}
@@ -50,7 +51,7 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号" data-step="2" data-title="单据编号"
               data-intro="单据编号自动生成、自动累加、开头是单据类型的首字母缩写，累加的规则是每次打开页面会自动占用一个新的编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number', validatorRules.number ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -133,8 +134,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.account" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增结算账户</div>
+                  <div v-if="quickBtn.account" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initAccount(0)"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -172,6 +173,7 @@
     <history-bill-list ref="historyBillListModalForm"></history-bill-list>
     <workflow-iframe ref="modalWorkflow" @ok="workflowModalFormOk"></workflow-iframe>
     <bill-print-iframe ref="modalPrint"></bill-print-iframe>
+    <bill-print-pro-iframe ref="modalPrintPro"></bill-print-pro-iframe>
   </j-modal>
 </template>
 <script>
@@ -183,6 +185,7 @@
   import HistoryBillList from '../dialog/HistoryBillList'
   import WorkflowIframe from '@/components/tools/WorkflowIframe'
   import BillPrintIframe from '../dialog/BillPrintIframe'
+  import BillPrintProIframe from '../dialog/BillPrintProIframe'
   import { FormTypes } from '@/utils/JEditableTableUtil'
   import { JEditableTableMixin } from '@/mixins/JEditableTableMixin'
   import { BillModalMixin } from '../mixins/BillModalMixin'
@@ -202,6 +205,7 @@
       HistoryBillList,
       WorkflowIframe,
       BillPrintIframe,
+      BillPrintProIframe,
       JUpload,
       JDate,
       JSelectMultiple,
@@ -246,7 +250,9 @@
             { title: '颜色', key: 'color', width: '5%', type: FormTypes.normal },
             { title: '品牌', key: 'brand', width: '6%', type: FormTypes.normal },
             { title: '制造商', key: 'mfrs', width: '6%', type: FormTypes.normal },
-            { title: '扩展信息', key: 'materialOther', width: '5%', type: FormTypes.normal },
+            { title: '扩展1', key: 'otherField1', width: '4%', type: FormTypes.normal },
+            { title: '扩展2', key: 'otherField2', width: '4%', type: FormTypes.normal },
+            { title: '扩展3', key: 'otherField3', width: '4%', type: FormTypes.normal },
             { title: '库存', key: 'stock', width: '5%', type: FormTypes.normal },
             { title: '单位', key: 'unit', width: '4%', type: FormTypes.normal },
             { title: '多属性', key: 'sku', width: '4%', type: FormTypes.normal },
@@ -266,6 +272,11 @@
           operTime:{
             rules: [
               { required: true, message: '请输入单据日期!' }
+            ]
+          },
+          number:{
+            rules: [
+              { required: true, message: '请输入单据编号!' }
             ]
           },
           organId:{
@@ -333,6 +344,7 @@
         this.initAccount(0)
         this.initPlatform()
         this.initQuickBtn()
+        this.handleChangeOtherField()
       },
       //提交单据时整理成formData
       classifyIntoFormData(allValues) {

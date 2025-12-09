@@ -3,11 +3,10 @@ package com.jsh.erp.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.jsh.erp.datasource.entities.DepotItem;
 import com.jsh.erp.datasource.entities.SerialNumberEx;
-import com.jsh.erp.service.depotHead.DepotHeadService;
-import com.jsh.erp.service.depotItem.DepotItemService;
-import com.jsh.erp.service.serialNumber.SerialNumberService;
+import com.jsh.erp.service.DepotHeadService;
+import com.jsh.erp.service.DepotItemService;
+import com.jsh.erp.service.SerialNumberService;
 import com.jsh.erp.utils.BaseResponseInfo;
-import com.jsh.erp.utils.ErpInfo;
 import com.jsh.erp.utils.Tools;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -21,12 +20,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
+import static com.jsh.erp.utils.ResponseJsonUtil.returnStr;
 
 /**
  * Description
- *
- * @Author: cjl
+ * @Author: jsh
  * @Date: 2019/1/22 10:29
  */
 @RestController
@@ -43,14 +41,7 @@ public class SerialNumberController {
     private DepotItemService depotItemService;
 
     /**
-     * create by: cjl
-     * description:
-     *批量添加序列号
-     * create time: 2019/1/29 15:11
-     * @Param: materialName
-     * @Param: serialNumberPrefix
-     * @Param: batAddTotal
-     * @Param: remark
+     * create by: jsh
      * @return java.lang.Object
      */
     @PostMapping("/batAddSerialNumber")
@@ -62,13 +53,7 @@ public class SerialNumberController {
         Integer batAddTotal = jsonObject.getInteger("batAddTotal");
         String remark = jsonObject.getString("remark");
         int insert = serialNumberService.batAddSerialNumber(materialCode,serialNumberPrefix,batAddTotal,remark);
-        if(insert > 0) {
-            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
-        } else if(insert == -1) {
-            return returnJson(objectMap, ErpInfo.TEST_USER.name, ErpInfo.TEST_USER.code);
-        } else {
-            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
-        }
+        return returnStr(objectMap, insert);
     }
 
     /**

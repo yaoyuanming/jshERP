@@ -49,7 +49,9 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="8">
                   <a-form-item label="颜色" :labelCol="{span: 5}" :wrapperCol="{span: 18, offset: 1}">
                     <a-input placeholder="请输入颜色" v-model="queryParam.color"></a-input>
@@ -72,6 +74,21 @@
                     <a-input placeholder="请输入制造商" v-model="queryParam.mfrs"></a-input>
                   </a-form-item>
                 </a-col>
+                <a-col :md="6" :sm="8">
+                  <a-form-item :label="queryTitle.mp1" :labelCol="{span: 5}" :wrapperCol="{span: 18, offset: 1}">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp1" v-model="queryParam.otherField1"></a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="8">
+                  <a-form-item :label="queryTitle.mp2" :labelCol="{span: 5}" :wrapperCol="{span: 18, offset: 1}">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp2" v-model="queryParam.otherField2"></a-input>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="8">
+                  <a-form-item :label="queryTitle.mp3" :labelCol="{span: 5}" :wrapperCol="{span: 18, offset: 1}">
+                    <a-input :placeholder="'请输入'+ queryTitle.mp3" v-model="queryParam.otherField3"></a-input>
+                  </a-form-item>
+                </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="序列号" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-select placeholder="有无序列号" v-model="queryParam.enableSerialNumber">
@@ -88,8 +105,8 @@
                     </a-select>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
           <a-table
             ref="table"
@@ -123,7 +140,7 @@
         </div>
       </a-col>
     </a-row>
-    <material-modal ref="modalForm" @ok="modalFormOk"></material-modal>
+    <material-modal ref="materialModalForm" @ok="modalFormOk"></material-modal>
   </a-modal>
 </template>
 
@@ -145,6 +162,11 @@
     data() {
       return {
         modalWidth: 1450,
+        queryTitle: {
+          mp1: '扩展1',
+          mp2: '扩展2',
+          mp3: '扩展3'
+        },
         queryParam: {
           q: '',
           standardOrModel: '',
@@ -153,6 +175,9 @@
           brand: '',
           categoryId: undefined,
           mfrs: '',
+          otherField1:'',
+          otherField2:'',
+          otherField3:'',
           enableSerialNumber: undefined,
           enableBatchNumber: undefined
         },
@@ -177,7 +202,9 @@
           {dataIndex: 'unit', title: '单位'},
           {dataIndex: 'sku', title: '多属性'},
           {dataIndex: 'stock', title: '库存'},
-          {dataIndex: 'expand', title: '扩展信息'}
+          {dataIndex: 'otherField1', title: '扩展1'},
+          {dataIndex: 'otherField2', title: '扩展2'},
+          {dataIndex: 'otherField3', title: '扩展3'}
         ],
         scrollTrigger: {},
         dataSource: [],
@@ -226,6 +253,7 @@
     created() {
       // 该方法触发屏幕自适应
       this.resetScreenSize()
+      this.handleChangeOtherField()
     },
     methods: {
       initBarCode() {
@@ -288,6 +316,29 @@
           this.scrollTrigger = {};
         }
       },
+      //动态替换扩展字段
+      handleChangeOtherField() {
+        let mpStr = getMpListShort(Vue.ls.get('materialPropertyList'))
+        if(mpStr) {
+          let mpArr = mpStr.split(',')
+          if(mpArr.length ===3) {
+            this.queryTitle.mp1 = mpArr[0]
+            this.queryTitle.mp2 = mpArr[1]
+            this.queryTitle.mp3 = mpArr[2]
+            for (let i = 0; i < this.columns.length; i++) {
+              if(this.columns[i].dataIndex === 'otherField1') {
+                this.columns[i].title = mpArr[0]
+              }
+              if(this.columns[i].dataIndex === 'otherField2') {
+                this.columns[i].title = mpArr[1]
+              }
+              if(this.columns[i].dataIndex === 'otherField3') {
+                this.columns[i].title = mpArr[2]
+              }
+            }
+          }
+        }
+      },
       showModal(barCode) {
         this.visible = true;
         this.title = '选择商品'
@@ -323,8 +374,8 @@
         that.selectMaterialIds = [];
       },
       addMaterial() {
-        this.$refs.modalForm.add()
-        this.$refs.modalForm.title = '新增商品'
+        this.$refs.materialModalForm.add()
+        this.$refs.materialModalForm.title = '新增商品'
       },
       getImgUrl(imgName, type) {
         if(imgName && imgName.split(',')) {
@@ -410,11 +461,6 @@
       rowAction(record, index) {
         return {
           on: {
-            click: () => {
-              let arr = []
-              arr.push(record.id)
-              this.selectedRowKeys = arr
-            },
             dblclick: () => {
               let arr = []
               arr.push(record.id)

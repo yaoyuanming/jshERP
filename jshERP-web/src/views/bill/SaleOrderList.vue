@@ -40,10 +40,17 @@
                   </a>
                 </a-col>
               </span>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="客户" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择客户" showSearch optionFilterProp="children" v-model="queryParam.organId">
+                    <a-select placeholder="请选择客户" showSearch allow-clear optionFilterProp="children" v-model="queryParam.organId" @search="handleSearchCustomer">
+                      <div slot="dropdownRender" slot-scope="menu">
+                        <v-nodes :vnodes="menu" />
+                        <a-divider style="margin: 4px 0;" />
+                        <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer(0)"><a-icon type="reload" /> 刷新列表</div>
+                      </div>
                       <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                         {{ item.supplier }}
                       </a-select-option>
@@ -52,7 +59,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="操作员" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择操作员" showSearch optionFilterProp="children" v-model="queryParam.creator">
+                    <a-select placeholder="请选择操作员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.creator">
                       <a-select-option v-for="(item,index) in userList" :key="index" :value="item.id">
                         {{ item.userName }}
                       </a-select-option>
@@ -61,7 +68,7 @@
                 </a-col>
                 <a-col :md="6" :sm="24">
                   <a-form-item label="单据状态" :labelCol="labelCol" :wrapperCol="wrapperCol">
-                    <a-select placeholder="请选择单据状态" v-model="queryParam.status">
+                    <a-select placeholder="请选择单据状态" allow-clear v-model="queryParam.status">
                       <a-select-option value="0">未审核</a-select-option>
                       <a-select-option value="9" v-if="!checkFlag">审核中</a-select-option>
                       <a-select-option value="1">已审核</a-select-option>
@@ -71,18 +78,35 @@
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="24">
+                  <a-form-item label="销售人员" :labelCol="labelCol" :wrapperCol="wrapperCol">
+                    <a-select placeholder="请选择销售人员" showSearch allow-clear optionFilterProp="children" v-model="queryParam.salesMan">
+                      <a-select-option v-for="(item,index) in salesManList" :key="index" :value="item.value">
+                        {{ item.text }}
+                      </a-select-option>
+                    </a-select>
+                  </a-form-item>
+                </a-col>
+                <a-col :md="6" :sm="24">
                   <a-form-item label="单据备注" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-input placeholder="请输入单据备注" v-model="queryParam.remark"></a-input>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- 操作按钮区域 -->
         <div class="table-operator"  style="margin-top: 5px">
           <a-button v-if="btnEnableList.indexOf(1)>-1" @click="myHandleAdd" type="primary" icon="plus">新增</a-button>
           <a-button v-if="btnEnableList.indexOf(1)>-1" icon="delete" @click="batchDel">删除</a-button>
+          <a-button v-if="quickBtn.saleOut.indexOf(1)>-1 && btnEnableList.indexOf(1)>-1" icon="share-alt" @click="transferBill('转销售出库', quickBtn.saleOut)">转销售出库</a-button>
+          <a-button v-if="quickBtn.purchaseOrder.indexOf(1)>-1 && purchaseBySaleFlag && btnEnableList.indexOf(1)>-1" icon="share-alt" @click="transferBill('转采购订单-以销定购', quickBtn.purchaseOrder)">转采购订单-以销定购</a-button>
+          <a-tooltip title="可将状态是部分销售的单据强制完成">
+            <a-button v-if="btnEnableList.indexOf(1)>-1" icon="issues-close" @click="batchForceClose">强制结单</a-button>
+          </a-tooltip>
+          <a-tooltip title="可将状态是部分采购的单据强制完成">
+            <a-button v-if="purchaseBySaleFlag && btnEnableList.indexOf(1)>-1" icon="issues-close" @click="batchForceClosePurchase">强制结单-以销定购</a-button>
+          </a-tooltip>
           <a-button v-if="checkFlag && btnEnableList.indexOf(2)>-1" icon="check" @click="batchSetStatus(1)">审核</a-button>
           <a-button v-if="checkFlag && btnEnableList.indexOf(7)>-1" icon="stop" @click="batchSetStatus(0)">反审核</a-button>
           <a-button v-if="isShowExcel && btnEnableList.indexOf(3)>-1" icon="download" @click="handleExport">导出</a-button>
@@ -128,6 +152,8 @@
             :scroll="scroll"
             :loading="loading"
             :rowSelection="{selectedRowKeys: selectedRowKeys, onChange: onSelectChange}"
+            :expandedRowKeys="expandedRowKeys"
+            @expand="onExpand"
             @change="handleTableChange">
             <span slot="action" slot-scope="text, record">
               <a @click="myHandleDetail(record, '销售订单', prefixNo)">查看</a>
@@ -152,11 +178,24 @@
               <a-tag v-if="purchaseStatus == '2'" color="cyan">完成采购</a-tag>
               <a-tag v-if="purchaseStatus == '3'" color="blue">部分采购</a-tag>
             </template>
+            <a-table
+              bordered
+              size="small"
+              slot="expandedRowRender"
+              slot-scope="record"
+              :loading="record.loading"
+              :columns="detailColumns"
+              :dataSource="record.childrens"
+              :row-key="record => record.id"
+              :pagination="false">
+            </a-table>
           </a-table>
         </div>
         <!-- table区域-end -->
         <!-- 表单区域 -->
         <sale-order-modal ref="modalForm" @ok="modalFormOk" @close="modalFormClose"></sale-order-modal>
+        <sale-out-modal ref="transferModalForm" @ok="modalFormOk" @close="modalFormClose"></sale-out-modal>
+        <purchase-order-modal ref="transferPurchaseModalForm" @ok="modalFormOk" @close="modalFormClose"></purchase-order-modal>
         <bill-detail ref="modalDetail" @ok="modalFormOk" @close="modalFormClose"></bill-detail>
         <bill-excel-iframe ref="billExcelIframe" @ok="modalFormOk" @close="modalFormClose"></bill-excel-iframe>
       </a-card>
@@ -165,6 +204,8 @@
 </template>
 <script>
   import SaleOrderModal from './modules/SaleOrderModal'
+  import SaleOutModal from './modules/SaleOutModal'
+  import PurchaseOrderModal from './modules/PurchaseOrderModal'
   import BillDetail from './dialog/BillDetail'
   import BillExcelIframe from '@/components/tools/BillExcelIframe'
   import { JeecgListMixin } from '@/mixins/JeecgListMixin'
@@ -178,10 +219,16 @@
     mixins:[JeecgListMixin,BillListMixin],
     components: {
       SaleOrderModal,
+      SaleOutModal,
+      PurchaseOrderModal,
       BillDetail,
       BillExcelIframe,
       JEllipsis,
-      JDate
+      JDate,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -195,9 +242,13 @@
           depotId: undefined,
           creator: undefined,
           status: undefined,
+          salesMan: undefined,
           remark: ""
         },
         prefixNo: 'XSDD',
+        urlPath: '/bill/sale_order',
+        //以销定购开关
+        purchaseBySaleFlag: false,
         labelCol: {
           span: 5
         },
@@ -254,6 +305,8 @@
           list: "/depotHead/list",
           delete: "/depotHead/delete",
           deleteBatch: "/depotHead/deleteBatch",
+          forceCloseBatch: "/depotHead/forceCloseBatch",
+          forceClosePurchaseBatch: "/depotHead/forceClosePurchaseBatch",
           batchSetStatusUrl: "/depotHead/batchSetStatus"
         }
       }
@@ -261,8 +314,11 @@
     created() {
       this.initSystemConfig()
       this.initCustomer()
+      this.initSalesman()
       this.initUser()
       this.getSystemConfig()
+      this.initQuickBtn()
+      this.getDepotByCurrentUser()
     },
     computed: {
     },

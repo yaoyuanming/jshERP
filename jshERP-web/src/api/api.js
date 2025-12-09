@@ -12,6 +12,7 @@ const addRole = (params)=>postAction("/role/add",params);
 const editRole = (params)=>putAction("/role/update",params);
 const checkRole = (params)=>getAction("/role/checkIsNameExist",params);
 const roleAllList = (params)=>getAction("/role/allList",params);
+const getTenantRoleList = (params)=>getAction("/role/tenantRoleList",params);
 //用户管理
 const registerUser = (params)=>postAction("/user/registerUser",params);
 const addUser = (params)=>postAction("/user/addUser",params);
@@ -45,7 +46,7 @@ const addDepot = (params)=>postAction("/depot/add",params);
 const editDepot = (params)=>putAction("/depot/update",params);
 const checkDepot = (params)=>getAction("/depot/checkIsNameExist",params);
 //商品属性
-const editMaterialProperty = (params)=>putAction("/materialProperty/update",params);
+const addOrUpdateMaterialProperty = (params)=>postAction("/materialProperty/addOrUpdate",params);
 //商品类型
 const queryMaterialCategoryTreeList = (params)=>getAction("/materialCategory/getMaterialCategoryTree",params);
 const queryMaterialCategoryById = (params)=>getAction("/materialCategory/findById",params);
@@ -63,9 +64,6 @@ const checkMaterialBarCode = (params)=>getAction("/materialsExtend/checkIsBarCod
 const batchUpdateMaterial = (params)=>postAction("/material/batchUpdate",params);
 const changeNameToPinYin = (params)=>postAction("/material/changeNameToPinYin",params);
 //序列号
-const addSerialNumber = (params)=>postAction("/serialNumber/add",params);
-const editSerialNumber = (params)=>putAction("/serialNumber/update",params);
-const checkSerialNumber = (params)=>getAction("/serialNumber/checkIsNameExist",params);
 const batAddSerialNumber = (params)=>postAction("/serialNumber/batAddSerialNumber",params);
 const getEnableSerialNumberList = (params)=>getAction("/serialNumber/getEnableSerialNumberList",params);
 //多属性
@@ -94,7 +92,8 @@ const addUserBusiness = (params)=>postAction("/userBusiness/add",params);
 const editUserBusiness = (params)=>putAction("/userBusiness/update",params);
 const checkUserBusiness = (params)=>getAction("/userBusiness/checkIsValueExist",params);
 const updateBtnStrByRoleId = (params)=>postAction("/userBusiness/updateBtnStr",params);
-//计量单位
+const updateOneValueByKeyIdAndType = (params)=>postAction("/userBusiness/updateOneValueByKeyIdAndType",params);
+//多单位
 const addUnit = (params)=>postAction("/unit/add",params);
 const editUnit = (params)=>putAction("/unit/update",params);
 const checkUnit = (params)=>getAction("/unit/checkIsNameExist",params);
@@ -109,6 +108,7 @@ const findBySelectOrgan = (params)=>postAction("/supplier/findBySelect_organ",pa
 //单据相关
 const findBillDetailByNumber = (params)=>getAction("/depotHead/getDetailByNumber",params);
 const waitBillCount = (params)=>getAction("/depotHead/waitBillCount",params);
+const getNeedCount = (params)=>getAction("/depotHead/getNeedCount",params);
 const batchAddDepotHeadAndDetail = (params)=>postAction("/depotHead/batchAddDepotHeadAndDetail",params);
 const findStockByDepotAndBarCode = (params)=>getAction("/depotItem/findStockByDepotAndBarCode",params);
 const getBatchNumberList = (params)=>getAction("/depotItem/getBatchNumberList",params);
@@ -124,6 +124,7 @@ export {
   editRole,
   checkRole,
   roleAllList,
+  getTenantRoleList,
   registerUser,
   addUser,
   editUser,
@@ -150,7 +151,7 @@ export {
   addDepot,
   editDepot,
   checkDepot,
-  editMaterialProperty,
+  addOrUpdateMaterialProperty,
   queryMaterialCategoryTreeList,
   queryMaterialCategoryById,
   checkMaterialCategory,
@@ -165,9 +166,6 @@ export {
   checkMaterialBarCode,
   batchUpdateMaterial,
   changeNameToPinYin,
-  addSerialNumber,
-  editSerialNumber,
-  checkSerialNumber,
   batAddSerialNumber,
   getEnableSerialNumberList,
   addMaterialAttribute,
@@ -191,6 +189,7 @@ export {
   editUserBusiness,
   checkUserBusiness,
   updateBtnStrByRoleId,
+  updateOneValueByKeyIdAndType,
   addUnit,
   editUnit,
   checkUnit,
@@ -203,6 +202,7 @@ export {
   findBySelectOrgan,
   findBillDetailByNumber,
   waitBillCount,
+  getNeedCount,
   batchAddDepotHeadAndDetail,
   findStockByDepotAndBarCode,
   getBatchNumberList,

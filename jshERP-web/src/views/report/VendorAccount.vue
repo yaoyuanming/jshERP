@@ -10,7 +10,12 @@
               <a-col :md="6" :sm="24">
                 <a-form-item label="供应商" :labelCol="labelCol" :wrapperCol="wrapperCol">
                   <a-select placeholder="请选择供应商" v-model="queryParam.organId"
-                    :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children">
+                    :dropdownMatchSelectWidth="false" showSearch allow-clear optionFilterProp="children" @search="handleSearchSupplier">
+                    <div slot="dropdownRender" slot-scope="menu">
+                      <v-nodes :vnodes="menu" />
+                      <a-divider style="margin: 4px 0;" />
+                      <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initSupplier"><a-icon type="reload" /> 刷新列表</div>
+                    </div>
                     <a-select-option v-for="(item,index) in supList" :key="index" :value="item.id">
                       {{ item.supplier }}
                     </a-select-option>
@@ -44,7 +49,9 @@
                   {{firstTotal}} {{lastTotal}}
                 </a-form-item>
               </a-col>
-              <template v-if="toggleSearchStatus">
+            </a-row>
+            <template v-if="toggleSearchStatus">
+              <a-row :gutter="24">
                 <a-col :md="6" :sm="24">
                   <a-form-item label="欠款情况" :labelCol="labelCol" :wrapperCol="wrapperCol">
                     <a-select v-model="queryParam.hasDebt">
@@ -53,8 +60,8 @@
                     </a-select>
                   </a-form-item>
                 </a-col>
-              </template>
-            </a-row>
+              </a-row>
+            </template>
           </a-form>
         </div>
         <!-- table区域-begin -->
@@ -146,7 +153,11 @@
     mixins:[JeecgListMixin],
     components: {
       DebtAccountList,
-      JEllipsis
+      JEllipsis,
+      VNodes: {
+        functional: true,
+        render: (h, ctx) => ctx.props.vnodes,
+      }
     },
     data () {
       return {
@@ -173,6 +184,7 @@
         supList: [],
         firstTotal: '',
         lastTotal: '',
+        setTimeFlag: null,
         tabKey: "1",
         pageName: 'vendorAccount',
         // 默认索引
@@ -219,11 +231,24 @@
       },
       initSupplier() {
         let that = this;
-        findBySelectSup({}).then((res)=>{
+        findBySelectSup({limit:1}).then((res)=>{
           if(res) {
             that.supList = res;
           }
         });
+      },
+      handleSearchSupplier(value) {
+        let that = this
+        if(this.setTimeFlag != null){
+          clearTimeout(this.setTimeFlag);
+        }
+        this.setTimeFlag = setTimeout(()=>{
+          findBySelectSup({key: value, limit:1}).then((res) => {
+            if(res) {
+              that.supList = res;
+            }
+          })
+        },500)
       },
       onDateChange: function (value, dateString) {
         this.queryParam.beginTime=dateString[0]
@@ -246,9 +271,10 @@
             this.tableAddTotalRow(this.columns, this.dataSource)
             this.firstTotal = '期初应付：' + res.data.firstMoney + "，"
             this.lastTotal = '期末应付：' + res.data.lastMoney
-          }
-          if(res.code===510){
+          } else if(res.code===510){
             this.$message.warning(res.data)
+          } else {
+            this.$message.warning(res.data.message)
           }
           this.loading = false;
         })

@@ -2,6 +2,8 @@ package com.jsh.erp.controller;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.jsh.erp.base.BaseController;
+import com.jsh.erp.base.TableDataInfo;
 import com.jsh.erp.constants.BusinessConstants;
 import com.jsh.erp.constants.ExceptionConstants;
 import com.jsh.erp.datasource.entities.DepotHead;
@@ -10,10 +12,11 @@ import com.jsh.erp.datasource.vo.DepotHeadVo4InDetail;
 import com.jsh.erp.datasource.vo.DepotHeadVo4InOutMCount;
 import com.jsh.erp.datasource.vo.DepotHeadVo4List;
 import com.jsh.erp.datasource.vo.DepotHeadVo4StatementAccount;
-import com.jsh.erp.service.depot.DepotService;
-import com.jsh.erp.service.depotHead.DepotHeadService;
-import com.jsh.erp.service.systemConfig.SystemConfigService;
-import com.jsh.erp.service.user.UserService;
+import com.jsh.erp.service.DepotService;
+import com.jsh.erp.service.DepotHeadService;
+import com.jsh.erp.service.MaterialService;
+import com.jsh.erp.service.SystemConfigService;
+import com.jsh.erp.service.UserService;
 import com.jsh.erp.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
+import static com.jsh.erp.utils.ResponseJsonUtil.returnStr;
 
 /**
  * @author ji-sheng-hua 752*718*920
@@ -38,7 +42,7 @@ import static com.jsh.erp.utils.ResponseJsonUtil.returnJson;
 @RestController
 @RequestMapping(value = "/depotHead")
 @Api(tags = {"单据管理"})
-public class DepotHeadController {
+public class DepotHeadController extends BaseController {
     private Logger logger = LoggerFactory.getLogger(DepotHeadController.class);
 
     @Resource
@@ -48,10 +52,95 @@ public class DepotHeadController {
     private DepotService depotService;
 
     @Resource
+    private MaterialService materialService;
+
+    @Resource
     private SystemConfigService systemConfigService;
 
     @Resource
     private UserService userService;
+
+    @GetMapping(value = "/info")
+    @ApiOperation(value = "根据id获取信息")
+    public String getList(@RequestParam("id") Long id,
+                          HttpServletRequest request) throws Exception {
+        DepotHead depotHead = depotHeadService.getDepotHead(id);
+        Map<String, Object> objectMap = new HashMap<>();
+        if(depotHead != null) {
+            objectMap.put("info", depotHead);
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
+
+    @GetMapping(value = "/list")
+    @ApiOperation(value = "获取信息列表")
+    public TableDataInfo getList(@RequestParam(value = Constants.SEARCH, required = false) String search,
+                                 HttpServletRequest request)throws Exception {
+        String type = StringUtil.getInfo(search, "type");
+        String subType = StringUtil.getInfo(search, "subType");
+        String hasDebt = StringUtil.getInfo(search, "hasDebt");
+        String status = StringUtil.getInfo(search, "status");
+        String purchaseStatus = StringUtil.getInfo(search, "purchaseStatus");
+        String number = StringUtil.getInfo(search, "number");
+        String linkApply = StringUtil.getInfo(search, "linkApply");
+        String linkNumber = StringUtil.getInfo(search, "linkNumber");
+        String beginTime = StringUtil.getInfo(search, "beginTime");
+        String endTime = StringUtil.getInfo(search, "endTime");
+        String materialParam = StringUtil.getInfo(search, "materialParam");
+        Long organId = StringUtil.parseStrLong(StringUtil.getInfo(search, "organId"));
+        Long creator = StringUtil.parseStrLong(StringUtil.getInfo(search, "creator"));
+        Long depotId = StringUtil.parseStrLong(StringUtil.getInfo(search, "depotId"));
+        Long accountId = StringUtil.parseStrLong(StringUtil.getInfo(search, "accountId"));
+        String salesMan = StringUtil.getInfo(search, "salesMan");
+        String remark = StringUtil.getInfo(search, "remark");
+        List<DepotHeadVo4List> list = depotHeadService.select(type, subType, hasDebt, status, purchaseStatus, number, linkApply, linkNumber,
+                beginTime, endTime, materialParam, organId, creator, depotId, accountId, salesMan, remark);
+        return getDataTable(list);
+    }
+
+    @DeleteMapping(value = "/delete")
+    @ApiOperation(value = "删除")
+    public String deleteResource(@RequestParam("id") Long id, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = depotHeadService.deleteDepotHead(id, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @DeleteMapping(value = "/deleteBatch")
+    @ApiOperation(value = "批量删除")
+    public String batchDeleteResource(@RequestParam("ids") String ids, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        int delete = depotHeadService.batchDeleteDepotHead(ids, request);
+        return returnStr(objectMap, delete);
+    }
+
+    @PostMapping(value = "/forceCloseBatch")
+    @ApiOperation(value = "强制结单")
+    public String forceCloseBatch(@RequestBody JSONObject jsonObject, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        String ids = jsonObject.getString("ids");
+        int res = depotHeadService.batchForceClose(ids, request);
+        if(res > 0) {
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
+
+    @PostMapping(value = "/forceClosePurchaseBatch")
+    @ApiOperation(value = "强制结单-以销定购")
+    public String forceClosePurchaseBatch(@RequestBody JSONObject jsonObject, HttpServletRequest request)throws Exception {
+        Map<String, Object> objectMap = new HashMap<>();
+        String ids = jsonObject.getString("ids");
+        int res = depotHeadService.batchForceClosePurchase(ids, request);
+        if(res > 0) {
+            return returnJson(objectMap, ErpInfo.OK.name, ErpInfo.OK.code);
+        } else {
+            return returnJson(objectMap, ErpInfo.ERROR.name, ErpInfo.ERROR.code);
+        }
+    }
 
     /**
      * 批量设置状态-审核或者反审核
@@ -100,6 +189,7 @@ public class DepotHeadController {
                                             @RequestParam("endTime") String endTime,
                                             @RequestParam("type") String type,
                                             @RequestParam(value = "creator", required = false) Long creator,
+                                            @RequestParam(value = "categoryId", required = false) Long categoryId,
                                             @RequestParam(value = "organizationId", required = false) Long organizationId,
                                             @RequestParam("remark") String remark,
                                             @RequestParam(value = "column", required = false, defaultValue = "createTime") String column,
@@ -126,14 +216,18 @@ public class DepotHeadController {
             }
             String subType = "出库".equals(type)? "销售" : "";
             String [] organArray = depotHeadService.getOrganArray(subType, "");
+            List<Long> categoryList = new ArrayList<>();
+            if(categoryId != null){
+                categoryList = materialService.getListByParentId(categoryId);
+            }
             beginTime = Tools.parseDayToTime(beginTime, BusinessConstants.DAY_FIRST_TIME);
             endTime = Tools.parseDayToTime(endTime,BusinessConstants.DAY_LAST_TIME);
             Boolean forceFlag = systemConfigService.getForceApprovalFlag();
             Boolean inOutManageFlag = systemConfigService.getInOutManageFlag();
-            List<DepotHeadVo4InDetail> list = depotHeadService.findInOutDetail(beginTime, endTime, type, creatorArray, organArray, forceFlag, inOutManageFlag,
+            List<DepotHeadVo4InDetail> list = depotHeadService.findInOutDetail(beginTime, endTime, type, creatorArray, organArray, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, oId, StringUtil.toNull(number), creator, remark,
                     StringUtil.safeSqlParse(column), StringUtil.safeSqlParse(order), (currentPage-1)*pageSize, pageSize);
-            int total = depotHeadService.findInOutDetailCount(beginTime, endTime, type, creatorArray, organArray, forceFlag, inOutManageFlag,
+            int total = depotHeadService.findInOutDetailCount(beginTime, endTime, type, creatorArray, organArray, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, oId, StringUtil.toNull(number), creator, remark);
             map.put("total", total);
             //存放数据json数组
@@ -141,7 +235,7 @@ public class DepotHeadController {
                 resList.addAll(list);
             }
             map.put("rows", resList);
-            DepotHeadVo4InDetail statistic = depotHeadService.findInOutDetailStatistic(beginTime, endTime, type, creatorArray, organArray, forceFlag, inOutManageFlag,
+            DepotHeadVo4InDetail statistic = depotHeadService.findInOutDetailStatistic(beginTime, endTime, type, creatorArray, organArray, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, oId, StringUtil.toNull(number), creator, remark);
             map.put("operNumberTotal", statistic.getOperNumber());
             map.put("allPriceTotal", statistic.getAllPrice());
@@ -175,6 +269,7 @@ public class DepotHeadController {
                                                    @RequestParam(value = "organId", required = false) Integer oId,
                                                    @RequestParam("materialParam") String materialParam,
                                                    @RequestParam(value = "depotId", required = false) Long depotId,
+                                                   @RequestParam(value = "categoryId", required = false) Long categoryId,
                                                    @RequestParam(value = "organizationId", required = false) Long organizationId,
                                                    @RequestParam("beginTime") String beginTime,
                                                    @RequestParam("endTime") String endTime,
@@ -196,18 +291,22 @@ public class DepotHeadController {
                     depotList.add(object.getLong("id"));
                 }
             }
+            List<Long> categoryList = new ArrayList<>();
+            if(categoryId != null){
+                categoryList = materialService.getListByParentId(categoryId);
+            }
             beginTime = Tools.parseDayToTime(beginTime,BusinessConstants.DAY_FIRST_TIME);
             endTime = Tools.parseDayToTime(endTime,BusinessConstants.DAY_LAST_TIME);
             Boolean forceFlag = systemConfigService.getForceApprovalFlag();
             Boolean inOutManageFlag = systemConfigService.getInOutManageFlag();
-            List<DepotHeadVo4InOutMCount> list = depotHeadService.findInOutMaterialCount(beginTime, endTime, type, forceFlag, inOutManageFlag,
+            List<DepotHeadVo4InOutMCount> list = depotHeadService.findInOutMaterialCount(beginTime, endTime, type, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, organizationId, oId, StringUtil.safeSqlParse(column), StringUtil.safeSqlParse(order),
                     (currentPage-1)*pageSize, pageSize);
-            int total = depotHeadService.findInOutMaterialCountTotal(beginTime, endTime, type, forceFlag, inOutManageFlag,
+            int total = depotHeadService.findInOutMaterialCountTotal(beginTime, endTime, type, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, organizationId, oId);
             map.put("total", total);
             map.put("rows", list);
-            DepotHeadVo4InOutMCount statistic = depotHeadService.findInOutMaterialCountStatistic(beginTime, endTime, type, forceFlag, inOutManageFlag,
+            DepotHeadVo4InOutMCount statistic = depotHeadService.findInOutMaterialCountStatistic(beginTime, endTime, type, categoryList, forceFlag, inOutManageFlag,
                     StringUtil.toNull(materialParam), depotList, organizationId, oId);
             map.put("numSumTotal", statistic.getNumSum());
             map.put("priceSumTotal", statistic.getPriceSum());
@@ -243,6 +342,7 @@ public class DepotHeadController {
                                                  @RequestParam("materialParam") String materialParam,
                                                  @RequestParam(value = "depotId", required = false) Long depotId,
                                                  @RequestParam(value = "depotIdF", required = false) Long depotIdF,
+                                                 @RequestParam(value = "categoryId", required = false) Long categoryId,
                                                  @RequestParam(value = "organizationId", required = false) Long organizationId,
                                                  @RequestParam("beginTime") String beginTime,
                                                  @RequestParam("endTime") String endTime,
@@ -280,18 +380,22 @@ public class DepotHeadController {
             if(creatorArray == null && organizationId != null) {
                 creatorArray = depotHeadService.getCreatorArrayByOrg(organizationId);
             }
+            List<Long> categoryList = new ArrayList<>();
+            if(categoryId != null){
+                categoryList = materialService.getListByParentId(categoryId);
+            }
             beginTime = Tools.parseDayToTime(beginTime, BusinessConstants.DAY_FIRST_TIME);
             endTime = Tools.parseDayToTime(endTime,BusinessConstants.DAY_LAST_TIME);
             Boolean forceFlag = systemConfigService.getForceApprovalFlag();
             List<DepotHeadVo4InDetail> list = depotHeadService.findAllocationDetail(beginTime, endTime, subType, StringUtil.toNull(number),
-                    creatorArray, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark,
+                    creatorArray, categoryList, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark,
                     StringUtil.safeSqlParse(column), StringUtil.safeSqlParse(order), (currentPage-1)*pageSize, pageSize);
             int total = depotHeadService.findAllocationDetailCount(beginTime, endTime, subType, StringUtil.toNull(number),
-                    creatorArray, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark);
+                    creatorArray, categoryList, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark);
             map.put("rows", list);
             map.put("total", total);
             DepotHeadVo4InDetail statistic = depotHeadService.findAllocationStatistic(beginTime, endTime, subType, StringUtil.toNull(number),
-                    creatorArray, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark);
+                    creatorArray, categoryList, forceFlag, StringUtil.toNull(materialParam), depotList, depotFList, remark);
             map.put("operNumberTotal", statistic.getOperNumber());
             map.put("allPriceTotal", statistic.getAllPrice());
             res.code = 200;
@@ -382,6 +486,35 @@ public class DepotHeadController {
                 map.put("firstMoney", firstMoney); //期初
                 map.put("lastMoney", lastMoney);  //期末
             }
+            res.code = 200;
+            res.data = map;
+        } catch(Exception e){
+            logger.error(e.getMessage(), e);
+            res.code = 500;
+            res.data = "获取数据失败";
+        }
+        return res;
+    }
+
+    /**
+     * 获取待收款或付款的条数
+     * @param request
+     * @return
+     */
+    @GetMapping(value = "/getNeedCount")
+    @ApiOperation(value = "获取待收款或付款的条数")
+    public BaseResponseInfo getNeedCount(@RequestParam("type") String type, HttpServletRequest request)throws Exception {
+        BaseResponseInfo res = new BaseResponseInfo();
+        Map<String, Object> map = new HashMap<>();
+        try {
+            String supplierType = "";
+            if (("vendor").equals(type)) {
+                supplierType = "供应商";
+            } else if (("customer").equals(type)) {
+                supplierType = "客户";
+            }
+            int needCount = depotHeadService.getNeedCount(supplierType);
+            map.put("needCount", needCount);
             res.code = 200;
             res.data = map;
         } catch(Exception e){

@@ -3,7 +3,7 @@
  * 高级查询按钮调用 superQuery方法  高级查询组件ref定义为superQueryModal
  * data中url定义 list为查询列表  delete为删除单条记录  deleteBatch为批量删除
  */
-import { filterObj,getNowFormatStr } from '@/utils/util';
+import { filterObj, getMpListShort, getNowFormatStr } from '@/utils/util'
 import { deleteAction, getAction, postAction, downFile, downFilePost, getFileAccessHttpUrl } from '@/api/manage'
 import Vue from 'vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
@@ -103,9 +103,10 @@ export const JeecgListMixin = {
           this.dataSource = res.data.rows
           this.ipagination.total = res.data.total
           this.tableAddTotalRow(this.columns, this.dataSource)
-        }
-        if(res.code===510){
+        } else if(res.code===510){
           this.$message.warning(res.data)
+        } else {
+          this.$message.warning(res.data.message)
         }
         this.loading = false
         this.onClearSelected()
@@ -148,7 +149,6 @@ export const JeecgListMixin = {
       });
       return str;
     },
-
     onSelectChange(selectedRowKeys, selectionRows) {
       this.selectedRowKeys = selectedRowKeys;
       this.selectionRows = selectionRows;
@@ -427,15 +427,11 @@ export const JeecgListMixin = {
     initActiveBtnStr() {
       let btnStrList = Vue.ls.get('winBtnStrList'); //按钮功能列表 JSON字符串
       this.btnEnableList = ""; //按钮列表
-      let pathName = location.pathname
-      if(pathName.indexOf('/plugins')>-1) {
-        pathName = '/system' + pathName
-      }
-      if (pathName && btnStrList) {
+      if (this.urlPath && btnStrList) {
         for (let i = 0; i < btnStrList.length; i++) {
-          if (btnStrList[i].url === pathName) {
+          if (btnStrList[i].url === this.urlPath) {
             if (btnStrList[i].btnStr) {
-              this.btnEnableList = btnStrList[i].btnStr;
+              this.btnEnableList = btnStrList[i].btnStr
             }
           }
         }
@@ -469,13 +465,13 @@ export const JeecgListMixin = {
         header: {
           cell: (h, props, children) => {
             const { key, ...restProps } = props
+            // 父表格列宽拖拽逻辑
             const col = column.find((col) => {
               const k = col.dataIndex || col.key
               return k === key
             })
-
             if (!col || !col.width) {
-              return h('th', { ...restProps }, [...children])
+              return h('th', { ...restProps }, children)
             }
 
             const dragProps = {
@@ -496,7 +492,7 @@ export const JeecgListMixin = {
               },
             }
             const drag = h(VueDraggableResizable, { ...dragProps })
-            return h('th', { ...restProps, class: 'resize-table-th' }, [...children, drag])
+            return h('th', { ...restProps, class: 'resize-table-th' }, [children, drag])
           },
         }
       }
@@ -537,6 +533,31 @@ export const JeecgListMixin = {
         //总数要增加合计的行数，每页都有一行合计，所以总数要加上
         let size = Math.ceil(this.ipagination.total/(this.ipagination.pageSize-1))
         this.ipagination.total = this.ipagination.total + size
+      }
+    },
+    //动态替换扩展字段
+    handleChangeOtherField(showQuery) {
+      let mpStr = getMpListShort(Vue.ls.get('materialPropertyList'))
+      if(mpStr) {
+        let mpArr = mpStr.split(',')
+        if(mpArr.length ===3) {
+          if(showQuery) {
+            this.queryTitle.mp1 = mpArr[0]
+            this.queryTitle.mp2 = mpArr[1]
+            this.queryTitle.mp3 = mpArr[2]
+          }
+          for (let i = 0; i < this.defColumns.length; i++) {
+            if(this.defColumns[i].dataIndex === 'otherField1') {
+              this.defColumns[i].title = mpArr[0]
+            }
+            if(this.defColumns[i].dataIndex === 'otherField2') {
+              this.defColumns[i].title = mpArr[1]
+            }
+            if(this.defColumns[i].dataIndex === 'otherField3') {
+              this.defColumns[i].title = mpArr[2]
+            }
+          }
+        }
       }
     },
     paginationChange(page, pageSize) {

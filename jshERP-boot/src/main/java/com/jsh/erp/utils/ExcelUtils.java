@@ -1,7 +1,8 @@
 package com.jsh.erp.utils;
 
 import java.io.*;
-import java.text.SimpleDateFormat;
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.*;
 
 import jxl.*;
@@ -110,8 +111,9 @@ public class ExcelUtils {
 	 * @return
 	 * @throws Exception
 	 */
+
 	public static File exportObjectsOneSheet(String fileName, String tip,
-											 String[] names, String title, List<String[]> objects) throws Exception {
+											 String[] names, String title, List<Object[]> objects) throws Exception {
 		File excelFile = new File("/opt/"+ fileName);
 		WritableWorkbook wtwb = Workbook.createWorkbook(excelFile);
 		WritableSheet sheet = wtwb.createSheet(title, 0);
@@ -157,9 +159,16 @@ public class ExcelUtils {
 		// 其余行依次写入数据
 		int rowNum = 2;
 		for (int j = 0; j < objects.size(); j++) {
-			String[] obj = objects.get(j);
+			Object[] obj = objects.get(j);
 			for (int h = 0; h < obj.length; h++) {
-				sheet.addCell(new Label(h, rowNum, obj[h], format));
+				if(obj[h] instanceof String) {
+					sheet.addCell(new Label(h, rowNum, obj[h].toString(), format));
+				} else if(obj[h] instanceof BigDecimal || obj[h] instanceof Double || obj[h] instanceof Integer || obj[h] instanceof Long) {
+					sheet.addCell(new jxl.write.Number(h, rowNum, Double.parseDouble(obj[h].toString()), format));
+				} else {
+					String cont = obj[h]!=null?obj[h].toString():"";
+					sheet.addCell(new Label(h, rowNum, cont, format));
+				}
 			}
 			rowNum = rowNum + 1;
 		}
@@ -171,6 +180,22 @@ public class ExcelUtils {
 	public static String getContent(Sheet src, int rowNum, int colNum) {
 		if(colNum < src.getRow(rowNum).length) {
 			return src.getRow(rowNum)[colNum].getContents().trim();
+		} else {
+			return null;
+		}
+	}
+
+	public static String getContentNumber(Sheet src, int rowNum, int colNum) {
+		if(colNum < src.getRow(rowNum).length) {
+			Cell cell = src.getCell(colNum, rowNum);
+			if(cell.getType() == CellType.NUMBER) {
+				NumberCell numCell = (NumberCell)cell;
+				double value = numCell.getValue(); // 获取完整精度的数值
+				DecimalFormat df = new DecimalFormat("#.######"); // 设置足够多的小数位
+				return df.format(value);
+			} else {
+				return cell.getContents().trim(); // 获取原始字符串内容
+			}
 		} else {
 			return null;
 		}

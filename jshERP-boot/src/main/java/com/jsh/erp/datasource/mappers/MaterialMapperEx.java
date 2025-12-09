@@ -1,6 +1,7 @@
 package com.jsh.erp.datasource.mappers;
 
 import com.jsh.erp.datasource.entities.*;
+import com.jsh.erp.datasource.vo.MaterialDepotStock;
 import com.jsh.erp.datasource.vo.MaterialVoSearch;
 import org.apache.ibatis.annotations.Param;
 
@@ -24,27 +25,9 @@ public interface MaterialMapperEx {
             @Param("color") String color,
             @Param("brand") String brand,
             @Param("mfrs") String mfrs,
-            @Param("materialOther") String materialOther,
-            @Param("weight") String weight,
-            @Param("expiryNum") String expiryNum,
-            @Param("enableSerialNumber") String enableSerialNumber,
-            @Param("enableBatchNumber") String enableBatchNumber,
-            @Param("position") String position,
-            @Param("enabled") String enabled,
-            @Param("remark") String remark,
-            @Param("idList") List<Long> idList,
-            @Param("mpList") String mpList,
-            @Param("offset") Integer offset,
-            @Param("rows") Integer rows);
-
-    Long countsByMaterial(
-            @Param("materialParam") String materialParam,
-            @Param("standard") String standard,
-            @Param("model") String model,
-            @Param("color") String color,
-            @Param("brand") String brand,
-            @Param("mfrs") String mfrs,
-            @Param("materialOther") String materialOther,
+            @Param("otherField1") String otherField1,
+            @Param("otherField2") String otherField2,
+            @Param("otherField3") String otherField3,
             @Param("weight") String weight,
             @Param("expiryNum") String expiryNum,
             @Param("enableSerialNumber") String enableSerialNumber,
@@ -71,6 +54,9 @@ public interface MaterialMapperEx {
                                                   @Param("color") String color,
                                                   @Param("brand") String brand,
                                                   @Param("mfrs") String mfrs,
+                                                  @Param("otherField1") String otherField1,
+                                                  @Param("otherField2") String otherField2,
+                                                  @Param("otherField3") String otherField3,
                                                   @Param("enableSerialNumber") String enableSerialNumber,
                                                   @Param("enableBatchNumber") String enableBatchNumber,
                                                   @Param("offset") Integer offset,
@@ -82,6 +68,9 @@ public interface MaterialMapperEx {
                                      @Param("color") String color,
                                      @Param("brand") String brand,
                                      @Param("mfrs") String mfrs,
+                                     @Param("otherField1") String otherField1,
+                                     @Param("otherField2") String otherField2,
+                                     @Param("otherField3") String otherField3,
                                      @Param("enableSerialNumber") String enableSerialNumber,
                                      @Param("enableBatchNumber") String enableBatchNumber);
 
@@ -118,7 +107,7 @@ public interface MaterialMapperEx {
 
     List<Material> getMaterialListByUnitIds(@Param("unitIds") String[] unitIds);
 
-    String getMaxBarCode();
+    List<String> getBarCodeList();
 
     List<MaterialVo4Unit> getMaterialByMeId(
             @Param("meId") Long meId);
@@ -177,4 +166,8 @@ public interface MaterialMapperEx {
 
     MaterialExtend getMaterialExtendBySerialNumber(
             @Param("serialNumber") String serialNumber);
+
+    List<MaterialDepotStock> getMaterialDepotStock(
+            @Param("depotIdArray") Long[] depotIdArray,
+            @Param("mId") Long mId);
 }

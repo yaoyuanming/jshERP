@@ -24,12 +24,12 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="客户">
               <a-select placeholder="请选择客户" v-decorator="[ 'organId', validatorRules.organId ]"
-                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="onChangeOrgan">
+                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @change="onChangeOrgan" @search="handleSearchCustomer">
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.customer" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div v-if="quickBtn.customer" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addCustomer"><a-icon type="plus" /> 新增客户</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initCustomer"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in cusList" :key="index" :value="item.id">
                   {{ item.supplier }}
@@ -44,7 +44,7 @@
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'billNo' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'billNo', validatorRules.billNo ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -54,8 +54,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.person" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addPerson"><a-icon type="plus" /> 新增经手人</div>
+                  <div v-if="quickBtn.person" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addPerson"><a-icon type="plus" /> 新增经手人</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initPerson"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in personList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -64,33 +64,37 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <a-row class="form-row" :gutter="24">
-          <a-col :lg="12" :md="12" :sm="24">
-            <!-- 操作按钮 -->
-            <div class="action-button">
-              <a-button type="primary" icon="plus" @click="handleClickAdd">选择单据</a-button>
-              <span class="gap"></span>
-              <a-button type="primary" icon="plus" @click="selectBeginNeed('客户')">选择期初</a-button>
-              <span class="gap"></span>
-              <a-button icon="minus" @click="handleClear">清空</a-button>
-            </div>
-          </a-col>
-        </a-row>
-        <a-row class="form-row" :gutter="24">
-          <a-col :span="24">
-            <j-editable-table
-              :ref="refKeys[0]"
-              :loading="accountTable.loading"
-              :columns="accountTable.columns"
-              :dataSource="accountTable.dataSource"
-              :minWidth="minWidth"
-              :maxHeight="300"
-              :rowNumber="true"
-              :rowSelection="false"
-              :actionButton="false"
-              @valueChange="onValueChange" />
-          </a-col>
-        </a-row>
+        <j-editable-table
+          :ref="refKeys[0]"
+          :loading="accountTable.loading"
+          :columns="accountTable.columns"
+          :dataSource="accountTable.dataSource"
+          :minWidth="minWidth"
+          :maxHeight="300"
+          :rowNumber="true"
+          :rowSelection="true"
+          :actionButton="false"
+          :actionDeleteButton="true"
+          @deleted="onDeleted"
+          @valueChange="onValueChange">
+          <template #buttonBefore>
+            <a-row :gutter="24" style="float:left;padding-bottom:8px;">
+              <a-col :md="12" :sm="24">
+                <a-button type="primary" icon="plus" @click="handleClickAdd">选择单据</a-button>
+              </a-col>
+              <a-col :md="12" :sm="24" style="padding-left:0">
+                <a-button type="primary" icon="plus" @click="selectBeginNeed('客户')">选择期初</a-button>
+              </a-col>
+            </a-row>
+          </template>
+          <template #buttonAfter>
+            <a-row :gutter="24" style="float:left;padding-bottom:8px;">
+              <a-col :md="12" :sm="24">
+                <a-button icon="link" @click="handleWaitNeed('客户')">待收款</a-button>
+              </a-col>
+            </a-row>
+          </template>
+        </j-editable-table>
         <a-row class="form-row" :gutter="24">
           <a-col :lg="24" :md="24" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="{xs: { span: 24 },sm: { span: 24 }}" label="">
@@ -106,8 +110,8 @@
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.account" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增结算账户</div>
+                  <div v-if="quickBtn.account" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addAccount"><a-icon type="plus" /> 新增</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initAccount"><a-icon type="reload" /> 刷新</div>
                 </div>
                 <a-select-option v-for="(item,index) in accountList" :key="index" :value="item.id">
                   {{ item.name }}
@@ -144,6 +148,7 @@
     <customer-modal ref="customerModalForm" @ok="customerModalFormOk"></customer-modal>
     <account-modal ref="accountModalForm" @ok="accountModalFormOk"></account-modal>
     <person-modal ref="personModalForm" @ok="personModalFormOk"></person-modal>
+    <wait-need-list ref="waitNeedList" @ok="waitNeedListOk"></wait-need-list>
     <workflow-iframe ref="modalWorkflow" @ok="workflowModalFormOk"></workflow-iframe>
   </j-modal>
 </template>
@@ -153,6 +158,7 @@
   import CustomerModal from '../../system/modules/CustomerModal'
   import AccountModal from '../../system/modules/AccountModal'
   import PersonModal from '../../system/modules/PersonModal'
+  import WaitNeedList from '../dialog/WaitNeedList'
   import WorkflowIframe from '@/components/tools/WorkflowIframe'
   import { FormTypes } from '@/utils/JEditableTableUtil'
   import { JEditableTableMixin } from '@/mixins/JEditableTableMixin'
@@ -167,6 +173,7 @@
       CustomerModal,
       AccountModal,
       PersonModal,
+      WaitNeedList,
       WorkflowIframe,
       JUpload,
       JDate,
@@ -217,6 +224,9 @@
           billTime:{
             rules: [{ required: true, message: '请选择单据日期!' }]
           },
+          billNo:{
+            rules: [{ required: true, message: '请输入单据编号!' }]
+          },
           accountId:{
             rules: [{ required: true, message: '请选择收款账户!' }]
           },
@@ -240,6 +250,13 @@
         if (this.action === 'add') {
           this.addInit(this.prefixNo)
           this.fileList = []
+          if(this.actionWithOrgan) {
+            //自动弹出待收款客户列表
+            let that = this
+            setTimeout(function() {
+              that.$refs.waitNeedList.show('客户')
+            },1000)
+          }
         } else {
           this.model.billTime = this.model.billTimeStr
           this.$nextTick(() => {
@@ -290,9 +307,6 @@
         } else {
           this.$message.warning('请选择客户！');
         }
-      },
-      handleClear() {
-        this.accountTable.dataSource = []
       }
     }
   }

@@ -1,16 +1,6 @@
 import { FormTypes, getListData } from '@/utils/JEditableTableUtil'
-import {
-  findBySelectCus,
-  findBySelectRetail,
-  findBySelectSup,
-  findStockByDepotAndBarCode,
-  getAccount,
-  getBatchNumberList,
-  getCurrentSystemConfig,
-  getMaterialByBarCode,
-  getPersonByNumType,
-  getPlatformConfigByKey
-} from '@/api/api'
+import { findBySelectCus, findBySelectRetail, findBySelectSup, findStockByDepotAndBarCode, getAccount,
+  getBatchNumberList, getCurrentSystemConfig, getMaterialByBarCode, getPersonByNumType, getPlatformConfigByKey } from '@/api/api'
 import { getAction } from '@/api/manage'
 import { getCheckFlag, getMpListShort, getNowFormatDateTime } from '@/utils/util'
 import { USER_INFO } from '@/store/mutation-types'
@@ -29,6 +19,8 @@ export const BillModalMixin = {
         value: ''
       },
       currentSelectDepotId: '',
+      transferParam: {},
+      defaultDepotId: '',
       depotList: [],
       accountList: [],
       accountIdList: [],
@@ -51,6 +43,9 @@ export const BillModalMixin = {
       isShowPrintBtn: true,
       /* 原始审核是否开启 */
       checkFlag: true,
+      //零收付款的场景开关
+      zeroChangeAmountFlag: false,
+      setTimeFlag: null,
       validatorRules:{
         price:{
           rules: [
@@ -117,6 +112,10 @@ export const BillModalMixin = {
               if(item.isDefault){
                 this.form.setFieldsValue({'accountId': item.id})
               }
+            }
+            //数据从前一个页面带过来的情况
+            if(this.transferParam && this.transferParam.accountId) {
+              this.form.setFieldsValue({'accountId': this.transferParam.accountId})
             }
           }
         })
@@ -190,6 +189,7 @@ export const BillModalMixin = {
           this.checkFlag = getCheckFlag(multiBillType, multiLevelApprovalFlag, this.prefixNo)
           this.purchaseBySaleFlag = res.data.purchaseBySaleFlag==='1'?true:false
           this.inOutManageFlag = res.data.inOutManageFlag==='1'?true:false
+          this.zeroChangeAmountFlag = res.data.zeroChangeAmountFlag==='1'?true:false
           if(res.data.auditPrintFlag==='1') {
             if(this.model.status === '0' || this.model.status === '9') {
               this.isShowPrintBtn = false
@@ -204,7 +204,7 @@ export const BillModalMixin = {
     },
     initSupplier(isChecked) {
       let that = this;
-      findBySelectSup({}).then((res)=>{
+      findBySelectSup({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.supList = res
           if(isChecked && res.length>0) {
@@ -215,7 +215,7 @@ export const BillModalMixin = {
     },
     initCustomer(isChecked) {
       let that = this;
-      findBySelectCus({}).then((res)=>{
+      findBySelectCus({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.cusList = res
           if(isChecked && res.length>0) {
@@ -226,7 +226,7 @@ export const BillModalMixin = {
     },
     initRetail(isChecked) {
       let that = this;
-      findBySelectRetail({}).then((res)=>{
+      findBySelectRetail({organId: this.model.organId, limit:1}).then((res)=>{
         if(res) {
           that.retailList = res
           if(isChecked && res.length>0) {
@@ -283,6 +283,45 @@ export const BillModalMixin = {
           })
         }
       })
+    },
+    handleSearchSupplier(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectSup({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.supList = res;
+          }
+        })
+      },500)
+    },
+    handleSearchCustomer(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectCus({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.cusList = res;
+          }
+        })
+      },500)
+    },
+    handleSearchRetail(value) {
+      let that = this
+      if(this.setTimeFlag != null){
+        clearTimeout(this.setTimeFlag);
+      }
+      this.setTimeFlag = setTimeout(()=>{
+        findBySelectRetail({key: value, limit:1}).then((res) => {
+          if(res) {
+            that.retailList = res;
+          }
+        })
+      },500)
     },
     handleManyAccount(){
       this.selectAccount(0)
@@ -465,6 +504,9 @@ export const BillModalMixin = {
                     let mObj = this.parseInfoToObj(mInfo)
                     mObj.depotId = mInfo.depotId
                     mObj.stock = mInfo.stock
+                    mObj.snList = ''
+                    mObj.batchNumber = ''
+                    mObj.expirationDate = ''
                     mArr.push(mObj)
                   }
                   let allPriceTotal = 0
@@ -499,6 +541,9 @@ export const BillModalMixin = {
                     this.changeColumnShow(mInfo)
                     let mInfoEx = this.parseInfoToObj(mInfo)
                     mInfoEx.stock = res.data.stock
+                    mInfoEx.snList = ''
+                    mInfoEx.batchNumber = ''
+                    mInfoEx.expirationDate = ''
                     let mObj = {
                       rowKey: row.id,
                       values: mInfoEx
@@ -533,32 +578,46 @@ export const BillModalMixin = {
           }
           break;
         case "batchNumber":
-          batchNumber = value
-          let depotItemId = ''
-          if(this.model.id) {
-            //只有在保存之后的编辑页面下才获取明细id
-            let rowId = row.id
-            if(rowId.length<=19) {
-              depotItemId = rowId-0
-            }
-          }
-          getBatchNumberList({name:'', depotItemId: depotItemId, depotId: row.depotId, barCode: row.barCode, batchNumber: batchNumber}).then((res) => {
-            if (res && res.code === 200) {
-              if(res.data && res.data.rows) {
-                let info = res.data.rows[0]
-                operNumber = info.totalNum
-                taxRate = row.taxRate-0 //税率
-                unitPrice = row.unitPrice-0 //单价
-                allPrice = (unitPrice*operNumber).toFixed(2)-0
-                taxMoney =((taxRate*0.01)*allPrice).toFixed(2)-0
-                taxLastMoney = (allPrice + taxMoney).toFixed(2)-0
-                target.setValues([{rowKey: row.id, values: {expirationDate: info.expirationDateStr, operNumber: operNumber,
-                    allPrice: allPrice, taxMoney: taxMoney, taxLastMoney: taxLastMoney}}])
-                target.recalcAllStatisticsColumns()
-                that.autoChangePrice(target)
+          //只针对零售出库、销售出库、采购退货、其它出库
+          if(this.prefixNo === 'LSCK' || this.prefixNo === 'XSCK' || this.prefixNo === 'CGTH' || this.prefixNo === 'QTCK') {
+            batchNumber = value
+            let depotItemId = ''
+            if(this.model.id) {
+              //只有在保存之后的编辑页面下才获取明细id
+              let rowId = row.id
+              if(rowId.length<=19) {
+                depotItemId = rowId-0
               }
             }
-          })
+            getBatchNumberList({name:'', depotItemId: depotItemId, depotId: row.depotId, barCode: row.barCode, batchNumber: batchNumber}).then((res) => {
+              if (res && res.code === 200) {
+                if(res.data && res.data.rows) {
+                  let info = res.data.rows[0]
+                  let preNumber = row.preNumber-0 //原数量
+                  let finishNumber = row.finishNumber-0 //已出库
+                  let totalNum = info.totalNum-0 //批次数量
+                  if(preNumber > 0) {
+                    if(totalNum > preNumber - finishNumber) {
+                      operNumber = preNumber - finishNumber
+                    } else {
+                      operNumber = totalNum
+                    }
+                  } else {
+                    operNumber = totalNum
+                  }
+                  taxRate = row.taxRate-0 //税率
+                  unitPrice = row.unitPrice-0 //单价
+                  allPrice = (unitPrice*operNumber).toFixed(2)-0
+                  taxMoney =((taxRate*0.01)*allPrice).toFixed(2)-0
+                  taxLastMoney = (allPrice + taxMoney).toFixed(2)-0
+                  target.setValues([{rowKey: row.id, values: {expirationDate: info.expirationDateStr, operNumber: operNumber,
+                      allPrice: allPrice, taxMoney: taxMoney, taxLastMoney: taxLastMoney}}])
+                  target.recalcAllStatisticsColumns()
+                  that.autoChangePrice(target)
+                }
+              }
+            })
+          }
           break;
         case "operNumber":
           operNumber = value-0
@@ -586,7 +645,7 @@ export const BillModalMixin = {
           operNumber = row.operNumber-0 //数量
           taxRate = row.taxRate-0 //税率
           allPrice = value-0
-          unitPrice = (allPrice/operNumber).toFixed(2)-0 //单价
+          unitPrice = (allPrice/operNumber).toFixed(4)-0 //单价
           taxMoney =((taxRate*0.01)*allPrice).toFixed(2)-0
           taxLastMoney = (allPrice + taxMoney).toFixed(2)-0
           target.setValues([{rowKey: row.id, values: {unitPrice: unitPrice, taxMoney: taxMoney, taxLastMoney: taxLastMoney}}])
@@ -608,9 +667,16 @@ export const BillModalMixin = {
           operNumber = row.operNumber-0 //数量
           taxLastMoney = value-0
           taxRate = row.taxRate-0 //税率
-          unitPrice = (taxLastMoney/operNumber/(1+taxRate*0.01)).toFixed(2)-0
-          allPrice = (unitPrice*operNumber).toFixed(2)-0
-          taxMoney =(taxLastMoney-allPrice).toFixed(2)-0
+          if(taxRate) {
+            unitPrice = (taxLastMoney/operNumber/(1+taxRate*0.01)).toFixed(4)-0
+            allPrice = (unitPrice*operNumber).toFixed(2)-0
+            taxMoney =(taxLastMoney-allPrice).toFixed(2)-0
+          } else {
+            //税率为0的情况，特殊处理
+            allPrice = taxLastMoney
+            unitPrice = (allPrice/operNumber).toFixed(4)-0 //单价
+            taxMoney = 0
+          }
           target.setValues([{rowKey: row.id, values: {unitPrice: unitPrice, allPrice: allPrice, taxMoney: taxMoney}}])
           target.recalcAllStatisticsColumns()
           that.autoChangePrice(target)
@@ -627,7 +693,9 @@ export const BillModalMixin = {
         color: mInfo.color,
         brand: mInfo.brand,
         mfrs: mInfo.mfrs,
-        materialOther: mInfo.materialOther,
+        otherField1: mInfo.otherField1,
+        otherField2: mInfo.otherField2,
+        otherField3: mInfo.otherField3,
         unit: mInfo.commodityUnit,
         sku: mInfo.sku,
         operNumber: 1,
@@ -644,7 +712,9 @@ export const BillModalMixin = {
       this.changeFormTypes(this.materialTable.columns, 'color', 0)
       this.changeFormTypes(this.materialTable.columns, 'brand', 0)
       this.changeFormTypes(this.materialTable.columns, 'mfrs', 0)
-      this.changeFormTypes(this.materialTable.columns, 'materialOther', 0)
+      this.changeFormTypes(this.materialTable.columns, 'otherField1', 0)
+      this.changeFormTypes(this.materialTable.columns, 'otherField2', 0)
+      this.changeFormTypes(this.materialTable.columns, 'otherField3', 0)
       this.changeFormTypes(this.materialTable.columns, 'sku', 0)
     },
     //使得sku、序列号、批号、到期日等为显示
@@ -661,8 +731,14 @@ export const BillModalMixin = {
       if(info.mfrs) {
         this.changeFormTypes(this.materialTable.columns, 'mfrs', 1)
       }
-      if(info.materialOther) {
-        this.changeFormTypes(this.materialTable.columns, 'materialOther', 1)
+      if(info.otherField1) {
+        this.changeFormTypes(this.materialTable.columns, 'otherField1', 1)
+      }
+      if(info.otherField2) {
+        this.changeFormTypes(this.materialTable.columns, 'otherField2', 1)
+      }
+      if(info.otherField3) {
+        this.changeFormTypes(this.materialTable.columns, 'otherField3', 1)
       }
       if(info.sku) {
         this.changeFormTypes(this.materialTable.columns, 'sku', 1)
@@ -715,6 +791,7 @@ export const BillModalMixin = {
         changeAmountNew = this.prefixNo === 'CGDD' || this.prefixNo === 'XSDD'?0:changeAmountNew
         this.form.setFieldsValue({'discount':discount,'discountMoney':discountMoney,'discountLastMoney':discountLastMoney,
           'changeAmount':changeAmountNew,'debt':0})
+        this.setZeroChangeAmount()
       });
     },
     //改变优惠率
@@ -733,6 +810,7 @@ export const BillModalMixin = {
         changeAmountNew = this.prefixNo === 'CGDD' || this.prefixNo === 'XSDD'?0:changeAmountNew
         this.form.setFieldsValue({'discountMoney':discountMoneyNew,'discountLastMoney':discountLastMoneyNew,
           'changeAmount':changeAmountNew,'debt':0})
+        this.setZeroChangeAmount()
       });
     },
     //改变付款优惠
@@ -751,6 +829,7 @@ export const BillModalMixin = {
         changeAmountNew = this.prefixNo === 'CGDD' || this.prefixNo === 'XSDD'?0:changeAmountNew
         this.form.setFieldsValue({'discount':discountNew,'discountLastMoney':discountLastMoneyNew,
           'changeAmount':changeAmountNew,'debt':0})
+        this.setZeroChangeAmount()
       });
     },
     //其它费用
@@ -764,6 +843,7 @@ export const BillModalMixin = {
       }
       this.$nextTick(() => {
         this.form.setFieldsValue({'changeAmount':changeAmountNew, 'debt':0})
+        this.setZeroChangeAmount()
       });
     },
     //改变扣除订金
@@ -777,6 +857,7 @@ export const BillModalMixin = {
       }
       this.$nextTick(() => {
         this.form.setFieldsValue({'changeAmount':changeAmountNew, 'debt':0})
+        this.setZeroChangeAmount()
       });
     },
     //改变本次付款
@@ -857,11 +938,21 @@ export const BillModalMixin = {
                 changeAmountNew = this.prefixNo === 'XSDD'?0:changeAmountNew
                 this.form.setFieldsValue({'discount':discount,'discountMoney':discountMoney,'discountLastMoney':discountLastMoney,
                   'changeAmount':changeAmountNew,'debt':0})
+                this.setZeroChangeAmount()
               });
             }
           })
         }
       })
+    },
+    //切换收付款的金额为0
+    setZeroChangeAmount() {
+      if(this.prefixNo === 'CGRK'||this.prefixNo === 'CGTH'||this.prefixNo === 'XSCK'||this.prefixNo === 'XSTH') {
+        if(this.zeroChangeAmountFlag) {
+          let oldChangeAmount = this.form.getFieldValue('changeAmount')-0
+          this.form.setFieldsValue({'changeAmount':0, 'debt':oldChangeAmount})
+        }
+      }
     },
     scanEnter() {
       this.scanStatus = false
@@ -1022,7 +1113,7 @@ export const BillModalMixin = {
       if(this.model && this.model.number) {
         getPlatformConfigByKey({ "platformKey": "send_workflow_url" }).then((res) => {
           if (res && res.code === 200) {
-            let sendWorkflowUrl = res.data.platformValue + '?no=' + this.model.number + '&type=1'
+            let sendWorkflowUrl = res.data.platformValue + '&no=' + this.model.number + '&type=1'
             this.$refs.modalWorkflow.show(this.model, sendWorkflowUrl, this.model.number, 1, 320)
             this.$refs.modalWorkflow.title = "发起流程"
           }
@@ -1031,15 +1122,30 @@ export const BillModalMixin = {
         this.$message.warning('请先保存单据后再提交流程！');
       }
     },
-    //三联打印预览
+    //三联打印新版
+    handlePrintPro(billType) {
+      if(this.model.id) {
+        getPlatformConfigByKey({"platformKey": "bill_print_pro_url"}).then((res)=> {
+          if (res && res.code === 200) {
+            let billPrintUrl = res.data.platformValue + '&no=' + this.model.number
+            let billPrintHeight = document.documentElement.clientHeight - 260
+            this.$refs.modalPrintPro.show(this.model, billPrintUrl, billPrintHeight)
+            this.$refs.modalPrintPro.title = billType + "-三联打印-新版"
+          }
+        })
+      } else {
+        this.$message.warning('请先保存单据后再打印！');
+      }
+    },
+    //三联打印
     handlePrint(billType) {
       if(this.model.id) {
         getPlatformConfigByKey({"platformKey": "bill_print_url"}).then((res)=> {
           if (res && res.code === 200) {
-            let billPrintUrl = res.data.platformValue + '?no=' + this.model.number
+            let billPrintUrl = res.data.platformValue + '&no=' + this.model.number
             let billPrintHeight = this.materialTable.dataSource.length*50 + 600
             this.$refs.modalPrint.show(this.model, billPrintUrl, billPrintHeight)
-            this.$refs.modalPrint.title = billType + "-三联打印预览"
+            this.$refs.modalPrint.title = billType + "-三联打印"
           }
         })
       } else {
@@ -1065,6 +1171,26 @@ export const BillModalMixin = {
             this.quickBtn.member = btnStrList[i].url === '/system/member'?btnStrList[i].btnStr.indexOf(1)>-1:this.quickBtn.member
             this.quickBtn.account = btnStrList[i].url === '/system/account'?btnStrList[i].btnStr.indexOf(1)>-1:this.quickBtn.account
             this.quickBtn.depot = btnStrList[i].url === '/system/depot'?btnStrList[i].btnStr.indexOf(1)>-1:this.quickBtn.depot
+          }
+        }
+      }
+    },
+    //动态替换扩展字段
+    handleChangeOtherField() {
+      let mpStr = getMpListShort(Vue.ls.get('materialPropertyList'))
+      if(mpStr) {
+        let mpArr = mpStr.split(',')
+        if(mpArr.length ===3) {
+          for (let i = 0; i < this.materialTable.columns.length; i++) {
+            if(this.materialTable.columns[i].key === 'otherField1') {
+              this.materialTable.columns[i].title = mpArr[0]
+            }
+            if(this.materialTable.columns[i].key === 'otherField2') {
+              this.materialTable.columns[i].title = mpArr[1]
+            }
+            if(this.materialTable.columns[i].key === 'otherField3') {
+              this.materialTable.columns[i].title = mpArr[2]
+            }
           }
         }
       }

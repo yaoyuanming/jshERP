@@ -15,7 +15,8 @@
     style="top:20px;height: 95%;">
     <template slot="footer">
       <a-button @click="handleCancel">取消</a-button>
-      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('请购单')">三联打印预览</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrintPro('请购单')">三联打印-新版</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('请购单')">三联打印</a-button>
       <a-button v-if="checkFlag && isCanCheck" :loading="confirmLoading" @click="handleOkAndCheck">保存并审核</a-button>
       <a-button type="primary" :loading="confirmLoading" @click="handleOk">保存（Ctrl+S）</a-button>
       <!--发起多级审核-->
@@ -32,7 +33,7 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号" data-step="2" data-title="单据编号"
               data-intro="单据编号自动生成、自动累加、开头是单据类型的首字母缩写，累加的规则是每次打开页面会自动占用一个新的编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number', validatorRules.number ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -96,6 +97,7 @@
     <history-bill-list ref="historyBillListModalForm"></history-bill-list>
     <workflow-iframe ref="modalWorkflow" @ok="workflowModalFormOk"></workflow-iframe>
     <bill-print-iframe ref="modalPrint"></bill-print-iframe>
+    <bill-print-pro-iframe ref="modalPrintPro"></bill-print-pro-iframe>
   </j-modal>
 </template>
 <script>
@@ -104,6 +106,7 @@
   import HistoryBillList from '../dialog/HistoryBillList'
   import WorkflowIframe from '@/components/tools/WorkflowIframe'
   import BillPrintIframe from '../dialog/BillPrintIframe'
+  import BillPrintProIframe from '../dialog/BillPrintProIframe'
   import { FormTypes } from '@/utils/JEditableTableUtil'
   import { JEditableTableMixin } from '@/mixins/JEditableTableMixin'
   import { BillModalMixin } from '../mixins/BillModalMixin'
@@ -119,6 +122,7 @@
       HistoryBillList,
       WorkflowIframe,
       BillPrintIframe,
+      BillPrintProIframe,
       JUpload,
       JDate,
       VNodes: {
@@ -168,7 +172,9 @@
             { title: '颜色', key: 'color', width: '6%', type: FormTypes.normal },
             { title: '品牌', key: 'brand', width: '6%', type: FormTypes.normal },
             { title: '制造商', key: 'mfrs', width: '6%', type: FormTypes.normal },
-            { title: '扩展信息', key: 'materialOther', width: '6%', type: FormTypes.normal },
+            { title: '扩展1', key: 'otherField1', width: '4%', type: FormTypes.normal },
+            { title: '扩展2', key: 'otherField2', width: '4%', type: FormTypes.normal },
+            { title: '扩展3', key: 'otherField3', width: '4%', type: FormTypes.normal },
             { title: '单位', key: 'unit', width: '6%', type: FormTypes.normal },
             { title: '多属性', key: 'sku', width: '10%', type: FormTypes.normal },
             { title: '数量', key: 'operNumber', width: '6%', type: FormTypes.inputNumber, statistics: true,
@@ -182,6 +188,11 @@
           operTime:{
             rules: [
               { required: true, message: '请输入单据日期!' }
+            ]
+          },
+          number:{
+            rules: [
+              { required: true, message: '请输入单据编号!' }
             ]
           },
           organId:{
@@ -245,6 +256,7 @@
         this.initSystemConfig()
         this.initPlatform()
         this.initQuickBtn()
+        this.handleChangeOtherField()
       },
       /** 整理成formData */
       classifyIntoFormData(allValues) {

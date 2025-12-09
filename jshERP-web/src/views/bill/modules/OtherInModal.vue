@@ -14,7 +14,8 @@
     style="top:20px;height: 95%;">
     <template slot="footer">
       <a-button @click="handleCancel">取消</a-button>
-      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('其它入库')">三联打印预览</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrintPro('其它入库')">三联打印-新版</a-button>
+      <a-button v-if="billPrintFlag && isShowPrintBtn" @click="handlePrint('其它入库')">三联打印</a-button>
       <a-button v-if="checkFlag && isCanCheck" :loading="confirmLoading" @click="handleOkAndCheck">保存并审核</a-button>
       <a-button type="primary" :loading="confirmLoading" @click="handleOk">保存（Ctrl+S）</a-button>
       <!--发起多级审核-->
@@ -26,12 +27,12 @@
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="供应商">
               <a-select placeholder="请选择供应商" v-decorator="[ 'organId' ]" :disabled="!rowCanEdit"
-                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children">
+                :dropdownMatchSelectWidth="false" showSearch optionFilterProp="children" @search="handleSearchSupplier">
                 <div slot="dropdownRender" slot-scope="menu">
                   <v-nodes :vnodes="menu" />
                   <a-divider style="margin: 4px 0;" />
-                  <div v-if="quickBtn.vendor" style="padding: 4px 8px; cursor: pointer;"
-                       @mousedown="e => e.preventDefault()" @click="addSupplier"><a-icon type="plus" /> 新增供应商</div>
+                  <div v-if="quickBtn.vendor" class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="addSupplier"><a-icon type="plus" /> 新增供应商</div>
+                  <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initSupplier(0)"><a-icon type="reload" /> 刷新列表</div>
                 </div>
                 <a-select-option v-for="(item,index) in supList" :key="index" :value="item.id">
                   {{ item.supplier }}
@@ -46,7 +47,7 @@
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
             <a-form-item :labelCol="labelCol" :wrapperCol="wrapperCol" label="单据编号">
-              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number' ]" />
+              <a-input placeholder="请输入单据编号" v-decorator.trim="[ 'number', validatorRules.number ]" />
             </a-form-item>
           </a-col>
           <a-col :lg="6" :md="12" :sm="24">
@@ -90,7 +91,8 @@
           </template>
           <template #depotAdd>
             <a-divider v-if="quickBtn.depot" style="margin: 4px 0;" />
-            <div v-if="quickBtn.depot" style="padding: 4px 8px; cursor: pointer;" @click="addDepot"><a-icon type="plus" /> 新增仓库</div>
+            <div v-if="quickBtn.depot" class="dropdown-btn" @click="addDepot"><a-icon type="plus" /> 新增</div>
+            <div class="dropdown-btn" @mousedown="e => e.preventDefault()" @click="initDepot"><a-icon type="reload" /> 刷新</div>
           </template>
         </j-editable-table>
         <a-row class="form-row" :gutter="24">
@@ -116,6 +118,7 @@
     <wait-bill-list ref="waitBillList" @ok="waitBillListOk"></wait-bill-list>
     <workflow-iframe ref="modalWorkflow" @ok="workflowModalFormOk"></workflow-iframe>
     <bill-print-iframe ref="modalPrint"></bill-print-iframe>
+    <bill-print-pro-iframe ref="modalPrintPro"></bill-print-pro-iframe>
   </j-modal>
 </template>
 <script>
@@ -126,6 +129,7 @@
   import ImportItemModal from '../dialog/ImportItemModal'
   import WorkflowIframe from '@/components/tools/WorkflowIframe'
   import BillPrintIframe from '../dialog/BillPrintIframe'
+  import BillPrintProIframe from '../dialog/BillPrintProIframe'
   import { FormTypes } from '@/utils/JEditableTableUtil'
   import { JEditableTableMixin } from '@/mixins/JEditableTableMixin'
   import { BillModalMixin } from '../mixins/BillModalMixin'
@@ -145,6 +149,7 @@
       WaitBillList,
       WorkflowIframe,
       BillPrintIframe,
+      BillPrintProIframe,
       JUpload,
       JDate,
       VNodes: {
@@ -193,7 +198,9 @@
             { title: '颜色', key: 'color', width: '5%', type: FormTypes.normal },
             { title: '品牌', key: 'brand', width: '6%', type: FormTypes.normal },
             { title: '制造商', key: 'mfrs', width: '6%', type: FormTypes.normal },
-            { title: '扩展信息', key: 'materialOther', width: '5%', type: FormTypes.normal },
+            { title: '扩展1', key: 'otherField1', width: '4%', type: FormTypes.normal },
+            { title: '扩展2', key: 'otherField2', width: '4%', type: FormTypes.normal },
+            { title: '扩展3', key: 'otherField3', width: '4%', type: FormTypes.normal },
             { title: '库存', key: 'stock', width: '5%', type: FormTypes.normal },
             { title: '单位', key: 'unit', width: '4%', type: FormTypes.normal },
             { title: '序列号', key: 'snList', width: '12%', type: FormTypes.popupJsh, kind: 'snAdd', multi: true },
@@ -216,6 +223,11 @@
           operTime:{
             rules: [
               { required: true, message: '请输入单据日期!' }
+            ]
+          },
+          number:{
+            rules: [
+              { required: true, message: '请输入单据编号!' }
             ]
           },
           type:{
@@ -280,6 +292,7 @@
         this.initDepot()
         this.initPlatform()
         this.initQuickBtn()
+        this.handleChangeOtherField()
       },
       //提交单据时整理成formData
       classifyIntoFormData(allValues) {
